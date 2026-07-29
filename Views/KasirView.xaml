@@ -1,0 +1,130 @@
+﻿<UserControl x:Class="KasirKu.Views.KasirView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:vm="clr-namespace:KasirKu.ViewModels"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance Type=vm:KasirViewModel, IsDesignTimeCreatable=False}"
+             d:DesignHeight="600" d:DesignWidth="900">
+
+    <UserControl.DataContext>
+        <vm:KasirViewModel />
+    </UserControl.DataContext>
+
+    <Grid Margin="15">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="1.2*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- KIRI: Scan Barcode & Keranjang Belanja -->
+        <Grid Grid.Column="0" Margin="0,0,15,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Panel Input Barcode / SKU / Nama -->
+            <Border Grid.Row="0" Background="#E9ECEF" Padding="10" CornerRadius="5" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="Scan Barcode / SKU:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+
+                    <!-- Input Barcode yang otomatis memicu TambahBarang saat tekan Enter -->
+                    <TextBox Grid.Column="1" Text="{Binding InputBarcode, UpdateSourceTrigger=PropertyChanged}" 
+                             FontSize="14" Padding="6" VerticalAlignment="Center">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding TambahBarangCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <Button Grid.Column="2" Content="Tambah" Command="{Binding TambahBarangCommand}" 
+                            Width="80" Margin="10,0,0,0" Padding="6" Background="#FF0275D8" Foreground="White" FontWeight="Bold"/>
+                </Grid>
+            </Border>
+
+            <!-- Tabel Keranjang Belanja -->
+            <DataGrid Grid.Row="1" ItemsSource="{Binding Keranjang}" AutoGenerateColumns="False" CanUserAddRows="False" SelectionMode="Single">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Nama Barang" Binding="{Binding Produk.Nama}" Width="*" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Harga" Binding="{Binding HargaJual, StringFormat=N0}" Width="100" IsReadOnly="True"/>
+
+                    <!-- Column Jumlah Barang yang Bisa Di-edit Langsung -->
+                    <DataGridTemplateColumn Header="Qty" Width="70">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBox Text="{Binding Jumlah, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTextColumn Header="Subtotal" Binding="{Binding Subtotal, StringFormat=N0}" Width="110" IsReadOnly="True"/>
+
+                    <!-- Tombol Hapus Item -->
+                    <DataGridTemplateColumn Header="Aksi" Width="70">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="X" Command="{Binding DataContext.HapusItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                        CommandParameter="{Binding}" Background="#FFD9534F" Foreground="White" FontWeight="Bold"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Tombol Batal Transaksi -->
+            <Button Grid.Row="2" Content="Reset / Batal Transaksi" Command="{Binding BatalTransaksiCommand}" 
+                    HorizontalAlignment="Left" Margin="0,10,0,0" Padding="8,5" Background="#FF6C757D" Foreground="White"/>
+        </Grid>
+
+        <!-- KANAN: Total, Input Bayar, & Kembalian -->
+        <Border Grid.Column="1" Background="#F8F9FA" BorderBrush="#DEE2E6" BorderThickness="1" CornerRadius="5" Padding="15">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="RINGKASAN PEMBAYARAN" FontSize="14" FontWeight="Bold" Foreground="#6C757D" Margin="0,0,0,15"/>
+
+                <StackPanel Grid.Row="1">
+                    <!-- Display Total Harga -->
+                    <Border Background="#212529" CornerRadius="5" Padding="10" Margin="0,0,0,15">
+                        <StackPanel>
+                            <TextBlock Text="TOTAL BELANJA" Foreground="#ADB5BD" FontSize="12" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding TotalHarga, StringFormat=Rp \{0:N0\}}" Foreground="#20C997" FontSize="28" FontWeight="Bold" HorizontalAlignment="Right"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Input Total Bayar -->
+                    <TextBlock Text="Uang Pembayaran (Rp)" FontWeight="Bold" Margin="0,5,0,2"/>
+                    <TextBox Text="{Binding TotalBayar, UpdateSourceTrigger=PropertyChanged, StringFormat=N0, TargetNullValue='0'}" 
+                             FontSize="20" FontWeight="Bold" Padding="5" Foreground="#0D6EFD" Margin="0,0,0,15"/>
+
+                    <!-- Display Kembalian -->
+                    <Border Background="#E9ECEF" CornerRadius="5" Padding="10" Margin="0,0,0,15">
+                        <StackPanel>
+                            <TextBlock Text="KEMBALIAN" Foreground="#6C757D" FontSize="12" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding Kembalian, StringFormat=Rp \{0:N0\}}" Foreground="#0D6EFD" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Tombol Proses Bayar -->
+                <Border Grid.Row="3" CornerRadius="5" ClipToBounds="True">
+                    <Button Content="PROSES BAYAR (ENTER)" Command="{Binding ProsesBayarCommand}" 
+                        Height="50" FontSize="16" FontWeight="Bold" Background="#198754" Foreground="White" Click="Button_Click"/>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

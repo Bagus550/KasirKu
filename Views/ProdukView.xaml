@@ -105,7 +105,7 @@
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-                    <Button Content="Batal / Reset" Command="{Binding ResetFormCommand}" Width="90" Padding="6" Margin="0,0,8,0"/>
+                    <Button Content="Batal / Reset" Command="{Binding ResetFormCommand}" Width="124" Padding="6" Margin="0,0,8,0"/>
                     <Button Content="Simpan" Command="{Binding SimpanProdukCommand}" Width="90" Padding="6" Background="#FF0275D8" Foreground="White"/>
                 </StackPanel>
             </StackPanel>

@@ -9,6 +9,8 @@ namespace KasirKu.Data
     {
         public DbSet<Produk> Produk { get; set; }
         public DbSet<Kasir> Kasir { get; set; }
+        public DbSet<Transaksi> Transaksi { get; set; }
+        public DbSet<DetailTransaksi> DetailTransaksi { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

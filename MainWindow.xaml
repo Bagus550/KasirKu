@@ -8,7 +8,16 @@
         Title="KasirKu - Aplikasi POS Desktop" Height="650" Width="1000" WindowStartupLocation="CenterScreen">
 
     <Grid>
-        <!-- Memanggil tampilan ProdukView di dalam MainWindow -->
-        <views:ProdukView />
+        <TabControl Margin="5">
+            <!-- Tab 1: Transaksi Kasir -->
+            <TabItem Header=" 🛒 Kasir / POS " FontSize="14" FontWeight="Bold">
+                <views:KasirView />
+            </TabItem>
+
+            <!-- Tab 2: Manajemen Produk -->
+            <TabItem Header=" 📦 Data Produk " FontSize="14" FontWeight="Bold">
+                <views:ProdukView />
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>
