@@ -76,12 +76,13 @@
 
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Harga Beli" Margin="0,0,0,2"/>
-                        <TextBox Text="{Binding SelectedProduk.HargaBeli, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
+                        <!-- Menggunakan LostFocus agar input kosong bisa di-handle dengan aman -->
+                        <TextBox Text="{Binding SelectedProduk.HargaBeli, UpdateSourceTrigger=LostFocus, TargetNullValue='0', FallbackValue='0'}" Padding="5"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Harga Jual" Margin="0,0,0,2"/>
-                        <TextBox Text="{Binding SelectedProduk.HargaJual, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
+                        <TextBox Text="{Binding SelectedProduk.HargaJual, UpdateSourceTrigger=LostFocus, TargetNullValue='0', FallbackValue='0'}" Padding="5"/>
                     </StackPanel>
                 </Grid>
 
@@ -94,12 +95,12 @@
 
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Stok" Margin="0,0,0,2"/>
-                        <TextBox Text="{Binding SelectedProduk.Stok, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
+                        <TextBox Text="{Binding SelectedProduk.Stok, UpdateSourceTrigger=LostFocus, TargetNullValue='0', FallbackValue='0'}" Padding="5"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Stok Min." Margin="0,0,0,2"/>
-                        <TextBox Text="{Binding SelectedProduk.StokMinimum, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
+                        <TextBox Text="{Binding SelectedProduk.StokMinimum, UpdateSourceTrigger=LostFocus, TargetNullValue='0', FallbackValue='0'}" Padding="5"/>
                     </StackPanel>
                 </Grid>
 

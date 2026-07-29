@@ -5,26 +5,13 @@ namespace KasirKu.Models
 {
     public class Produk
     {
-        [Key]
         public int Id { get; set; }
-
-        [Required]
-        [MaxLength(100)]
-        public string Nama { get; set; } = string.Empty;
-
-        [MaxLength(50)]
         public string? SKU { get; set; }
-
-        [MaxLength(50)]
-        public string Kategori { get; set; } = "Umum";
-
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal HargaBeli { get; set; }
-
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal HargaJual { get; set; }
-
-        public int Stok { get; set; }
-        public int StokMinimum { get; set; } = 5;
+        public string Nama { get; set; } = string.Empty;
+        public string? Kategori { get; set; } = "Umum";
+        public decimal HargaBeli { get; set; } = 0;
+        public decimal HargaJual { get; set; } = 0;
+        public int Stok { get; set; } = 0;
+        public int StokMinimum { get; set; } = 0;
     }
 }
