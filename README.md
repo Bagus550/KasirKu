@@ -72,7 +72,7 @@ IDE           → Visual Studio Community 2026
 
 ```bash
 # Clone repository
-git clone https://github.com/username/kasirku.git
+[git clone https://github.com/username/kasirku.git](https://github.com/Bagus550/KasirKu.git)
 cd kasirku
 
 # Restore dependencies
