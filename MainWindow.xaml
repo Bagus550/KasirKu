@@ -10,12 +10,16 @@
     <Grid>
         <TabControl Margin="5">
             <!-- Tab 1: Transaksi Kasir -->
-            <TabItem Header=" 🛒 Kasir / POS " FontSize="14" FontWeight="Bold">
+            <TabItem Header="Kasir" FontSize="14" FontWeight="Bold">
                 <views:KasirView />
             </TabItem>
 
+            <TabItem Header="Laporan Penjualan " FontSize="14" FontWeight="Bold">
+                <views:LaporanView />
+            </TabItem>
+
             <!-- Tab 2: Manajemen Produk -->
-            <TabItem Header=" 📦 Data Produk " FontSize="14" FontWeight="Bold">
+            <TabItem Header="Data Produk " FontSize="14" FontWeight="Bold">
                 <views:ProdukView />
             </TabItem>
         </TabControl>
