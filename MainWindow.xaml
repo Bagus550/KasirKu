@@ -8,20 +8,43 @@
         Title="KasirKu - Aplikasi POS Desktop" Height="650" Width="1000" WindowStartupLocation="CenterScreen">
 
     <Grid>
-        <TabControl Margin="5">
-            <!-- Tab 1: Transaksi Kasir -->
-            <TabItem Header="Kasir" FontSize="14" FontWeight="Bold">
-                <views:KasirView />
-            </TabItem>
+        <!-- Tampilan Form Login (Muncul di awal) -->
+        <views:LoginView x:Name="ViewLogin" />
 
-            <TabItem Header="Laporan Penjualan " FontSize="14" FontWeight="Bold">
-                <views:LaporanView />
-            </TabItem>
+        <!-- Tampilan Utam Tab Menu (Tersembunyi sebelum Login) -->
+        <Grid x:Name="GridUtama" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-            <!-- Tab 2: Manajemen Produk -->
-            <TabItem Header="Data Produk " FontSize="14" FontWeight="Bold">
-                <views:ProdukView />
-            </TabItem>
-        </TabControl>
+            <!-- Bar Atas Status Login -->
+            <Border Grid.Row="0" Background="#212529" Padding="10">
+                <Grid>
+                    <TextBlock x:Name="TxtInfoUser" Foreground="White" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <Button Content="Logout" Click="BtnLogout_Click" HorizontalAlignment="Right" Padding="10,3" Background="#DC3545" Foreground="White"/>
+                </Grid>
+            </Border>
+
+            <!-- Berikan x:Name pada TabControl -->
+            <TabControl x:Name="TabUtama" Grid.Row="1" Margin="5">
+
+                <!-- Tab 1: Transaksi Kasir -->
+                <TabItem x:Name="TabKasir" Header=" 🛒 Kasir / POS " FontSize="14" FontWeight="Bold">
+                    <views:KasirView />
+                </TabItem>
+
+                <!-- Tab 2: Laporan Penjualan -->
+                <TabItem x:Name="TabLaporan" Header=" 📊 Laporan Penjualan " FontSize="14" FontWeight="Bold">
+                    <views:LaporanView />
+                </TabItem>
+
+                <!-- Tab 3: Manajemen Produk -->
+                <TabItem x:Name="TabProduk" Header=" 📦 Data Produk " FontSize="14" FontWeight="Bold">
+                    <views:ProdukView />
+                </TabItem>
+
+            </TabControl>
+        </Grid>
     </Grid>
 </Window>

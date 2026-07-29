@@ -26,7 +26,8 @@ namespace KasirKu.Data
 
             // Seed Data Awal untuk testing
             modelBuilder.Entity<Kasir>().HasData(
-                new Kasir { Id = 1, Nama = "Admin KasirKu", Username = "admin", PasswordHash = "admin123", Role = "Admin" }
+                new Kasir { Id = 1, Nama = "Admin KasirKu", Username = "admin", PasswordHash = "admin123", Role = "Admin" },
+                new Kasir { Id = 2, Nama = "Kasir Toko", Username = "kasir", PasswordHash = "kasir123", Role = "Kasir" }
             );
 
             modelBuilder.Entity<Produk>().HasData(

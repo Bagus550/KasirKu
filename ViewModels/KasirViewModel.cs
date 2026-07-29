@@ -189,6 +189,8 @@ namespace KasirKu.ViewModels
                 db.Transaksi.Add(transaksi);
                 db.SaveChanges();
 
+                Services.PrinterService.CetakStruk(transaksi);
+
                 MessageBox.Show($"Transaksi Berhasil!\nNota: {transaksi.NomorNota}\nKembalian: Rp {Kembalian:N0}", "Sukses", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 // Clear Keranjang setelah sukses
