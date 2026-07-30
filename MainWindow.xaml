@@ -44,6 +44,10 @@
                     <views:ProdukView />
                 </TabItem>
 
+                <TabItem x:Name="TabAuditLog" Header="📋 Audit Log &amp; Sesi Kasir">
+                    <views:AuditLogView />
+                </TabItem>
+
             </TabControl>
         </Grid>
     </Grid>

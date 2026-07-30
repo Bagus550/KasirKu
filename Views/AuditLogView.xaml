@@ -1,0 +1,60 @@
+﻿<UserControl x:Class="KasirKu.Views.AuditLogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:converters="clr-namespace:KasirKu.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <converters:BoolToStatusConverter x:Key="BoolToStatusConverter"/>
+    </UserControl.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Filter Tanggal -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
+            <TextBlock Text="Filter Tanggal:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+            <DatePicker SelectedDate="{Binding TanggalAwal}" Width="120" Margin="0,0,10,0"/>
+            <TextBlock Text="s/d" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <DatePicker SelectedDate="{Binding TanggalAkhir}" Width="120" Margin="0,0,15,0"/>
+            <Button Content="🔍 Tampilkan Log" Command="{Binding MuatDataAuditCommand}" Padding="10,5" Background="#0D6EFD" Foreground="White" FontWeight="Bold"/>
+        </StackPanel>
+
+        <!-- Tab Content -->
+        <TabControl Grid.Row="1">
+            <!-- TAB 1: Rekap Sesi & Shift Kasir -->
+            <TabItem Header="📋 Rekap Sesi &amp; Shift Kasir">
+                <!-- Pastikan TIDAK ADA atribut SelectionChanged="DataGrid_SelectionChanged" di sini -->
+                <DataGrid ItemsSource="{Binding DaftarSesiKasir}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Waktu Login" Binding="{Binding WaktuLogin, StringFormat=\{0:dd/MM/yyyy HH:mm\}}" Width="130"/>
+                        <DataGridTextColumn Header="Waktu Logout" Binding="{Binding WaktuLogout, StringFormat=\{0:dd/MM/yyyy HH:mm\}, TargetNullValue='(Masih Aktif)'}" Width="130"/>
+                        <DataGridTextColumn Header="Nama Kasir" Binding="{Binding Kasir.Nama}" Width="*"/>
+                        <DataGridTextColumn Header="Shift" Binding="{Binding Shift.NamaShift, TargetNullValue='- (Admin)'}" Width="120"/>
+                        <DataGridTextColumn Header="Modal Awal" Binding="{Binding ModalAwal, StringFormat=Rp \{0:N0\}}" Width="110"/>
+                        <DataGridTextColumn Header="Total Omzet" Binding="{Binding TotalTunaiSistem, StringFormat=Rp \{0:N0\}}" Width="110"/>
+                        <DataGridTextColumn Header="Status" Binding="{Binding IsClosed, Converter={StaticResource BoolToStatusConverter}}" Width="90"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- TAB 2: Audit Trail Aktivitas -->
+            <TabItem Header="🕒 Log Aktivitas Sistem">
+                <DataGrid ItemsSource="{Binding DaftarAuditLog}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Waktu" Binding="{Binding Waktu, StringFormat=\{0:dd/MM/yyyy HH:mm:ss\}}" Width="140"/>
+                        <DataGridTextColumn Header="Kasir" Binding="{Binding Kasir.Nama}" Width="150"/>
+                        <DataGridTextColumn Header="Aksi" Binding="{Binding JenisAksi}" Width="130" FontWeight="Bold"/>
+                        <DataGridTextColumn Header="Keterangan Audit" Binding="{Binding Keterangan}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

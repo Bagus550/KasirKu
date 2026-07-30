@@ -2,6 +2,8 @@
 using CommunityToolkit.Mvvm.Input;
 using KasirKu.Data;
 using KasirKu.Models;
+using KasirKu.Services;
+using KasirKu.Views; // <-- Pastikan namespace Views di-import
 using System;
 using System.Linq;
 using System.Windows;
@@ -47,8 +49,50 @@ namespace KasirKu.ViewModels
             UserLoginAktif = user;
             MessageBox.Show($"Selamat datang, {user.Nama} ({user.Role})!", "Login Berhasil", MessageBoxButton.OK, MessageBoxImage.Information);
 
-            LoginBerhasilEvent?.Invoke(this, user);
+            if (user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                // JIKA ADMIN: Bypass ClockIn & Buat Session Dummy Khusus Admin
+                var adminSession = new KasirSession
+                {
+                    KasirId = user.Id,
+                    ShiftId = null,
+                    WaktuLogin = DateTime.Now,
+                    ModalAwal = 0,
+                    IsClosed = false
+                };
+
+                db.KasirSession.Add(adminSession);
+
+                db.AuditLog.Add(new AuditLog
+                {
+                    KasirId = user.Id,
+                    Waktu = DateTime.Now,
+                    JenisAksi = "LOGIN_ADMIN",
+                    Keterangan = "Admin Login Sistem"
+                });
+
+                db.SaveChanges();
+
+                SessionManager.SetSession(user, adminSession);
+                LoginBerhasilEvent?.Invoke(this, user);
+            }
+            else
+            {
+                // JIKA KASIR: WajibClock-In (Pilih Shift & Input Modal Awal)
+                var clockInWin = new ClockInWindow(user);
+                bool? isClockInSuccess = clockInWin.ShowDialog();
+
+                if (isClockInSuccess == true)
+                {
+                    LoginBerhasilEvent?.Invoke(this, user);
+                }
+                else
+                {
+                    UserLoginAktif = null;
+                }
+            }
         }
+
         public void ResetForm()
         {
             Username = string.Empty;

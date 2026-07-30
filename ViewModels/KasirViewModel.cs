@@ -2,7 +2,9 @@
 using CommunityToolkit.Mvvm.Input;
 using KasirKu.Data;
 using KasirKu.Models;
+using KasirKu.Services;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
@@ -211,15 +213,27 @@ namespace KasirKu.ViewModels
             {
                 using var db = new AppDbContext();
 
-                // 1. Buat Header Transaksi
+                // 1. Buat Header Transaksi (Diikat ke Session & Kasir yang Login)
                 var transaksi = new Transaksi
                 {
                     NomorNota = $"INV/{DateTime.Now:yyyyMMdd}/{Guid.NewGuid().ToString()[..5].ToUpper()}",
                     Tanggal = DateTime.Now,
                     TotalHarga = TotalHarga,
                     TotalBayar = TotalBayar,
-                    Kembalian = Kembalian
+                    Kembalian = Kembalian,
+                    KasirSessionId = SessionManager.CurrentSession?.Id, // Catat Sesi Shift
+                    NamaKasir = SessionManager.CurrentKasir?.Nama ?? "Admin" // Catat Nama Kasir Bertugas
                 };
+
+                // Update juga total omzet tunai di Sesi Kasir jika ada sesi aktif
+                if (SessionManager.CurrentSession != null)
+                {
+                    var currentSessionDb = db.KasirSession.Find(SessionManager.CurrentSession.Id);
+                    if (currentSessionDb != null)
+                    {
+                        currentSessionDb.TotalTunaiSistem += TotalHarga;
+                    }
+                }
 
                 // 2. Buat Detail Transaksi & Potong Stok Produk
                 foreach (var cartItem in Keranjang)
@@ -247,7 +261,7 @@ namespace KasirKu.ViewModels
 
                 Services.PrinterService.CetakStruk(transaksi);
 
-                MessageBox.Show($"Transaksi Berhasil!\nNota: {transaksi.NomorNota}\nKembalian: Rp {Kembalian:N0}", "Sukses", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Transaksi Berhasil!\nNota: {transaksi.NomorNota}\nKasir: {transaksi.NamaKasir}\nKembalian: Rp {Kembalian:N0}", "Sukses", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 // Clear Keranjang setelah sukses
                 BatalTransaksi();

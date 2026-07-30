@@ -101,6 +101,7 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="No. Nota" Binding="{Binding NomorNota}" Width="*"/>
                             <DataGridTextColumn Header="Waktu" Binding="{Binding Tanggal, StringFormat=\{0:dd/MM/yyyy HH:mm\}}" Width="120"/>
+                            <DataGridTextColumn Header="Kasir" Binding="{Binding NamaKasir}" Width="*"/>
                             <DataGridTextColumn Header="Total" Binding="{Binding TotalHarga, StringFormat=N0}" Width="100"/>
                         </DataGrid.Columns>
                     </DataGrid>

@@ -1,0 +1,82 @@
+﻿<Window x:Class="KasirKu.Views.ClockOutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Clock-Out / Tutup Shift Kasir" 
+        Height="550" Width="450"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#F8FAFC">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="🔒 Tutup Shift Kasir (Clock-Out)" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
+            <TextBlock Text="Periksa dan hitung fisik uang tunai di laci sebelum logout." FontSize="12" Foreground="#64748B" Margin="0,3,0,0"/>
+        </StackPanel>
+
+        <!-- Card Detail Calculation -->
+        <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="15" BorderBrush="#E2E8F0" BorderThickness="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Kasir / Operator:" Foreground="#64748B"/>
+                        <TextBlock Text="{Binding NamaKasir}" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Nama Shift:" Foreground="#64748B"/>
+                        <TextBlock Text="{Binding NamaShift}" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                    </Grid>
+
+                    <Separator Margin="0,8"/>
+
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Modal Awal Laci:" Foreground="#64748B"/>
+                        <TextBlock Text="{Binding ModalAwal, StringFormat='Rp {0:N0}'}" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Total Omzet Tunai Shift:" Foreground="#64748B"/>
+                        <TextBlock Text="{Binding TotalOmzetTunai, StringFormat='Rp {0:N0}'}" HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="#16A34A"/>
+                    </Grid>
+
+                    <Border Background="#F1F5F9" CornerRadius="6" Padding="10" Margin="0,10">
+                        <Grid>
+                            <TextBlock Text="Ekspektasi Uang di Laci:" FontWeight="Bold" Foreground="#334155"/>
+                            <TextBlock Text="{Binding TotalEkspektasi, StringFormat='Rp {0:N0}'}" HorizontalAlignment="Right" FontWeight="Bold" FontSize="15" Foreground="#0284C7"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Input Real Uang Fisik -->
+                    <TextBlock Text="Input Uang Fisik di Laci (Real):" FontWeight="Bold" Margin="0,10,0,5"/>
+                    <TextBox Text="{Binding TotalAktifFisikText, UpdateSourceTrigger=PropertyChanged}" 
+                             FontSize="16" Padding="8" FontWeight="Bold"/>
+
+                    <!-- Display Selisih -->
+                    <Border Background="#FEF2F2" CornerRadius="6" Padding="10" Margin="0,15,0,0">
+                        <Grid>
+                            <TextBlock Text="Selisih Laci:" FontWeight="Bold" Foreground="#991B1B"/>
+                            <TextBlock Text="{Binding Selisih, StringFormat='Rp {0:N0}'}" HorizontalAlignment="Right" FontWeight="Bold" FontSize="15" Foreground="#DC2626"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Input Catatan -->
+                    <TextBlock Text="Catatan (Opsional):" Margin="0,15,0,5" Foreground="#64748B"/>
+                    <TextBox Text="{Binding Catatan, UpdateSourceTrigger=PropertyChanged}" Height="50" TextWrapping="Wrap" AcceptsReturn="True"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Actions -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="Batal" Width="100" Height="38" Margin="0,0,10,0" Click="BtnBatal_Click" Background="#E2E8F0" BorderThickness="0" Cursor="Hand"/>
+            <Button Content="Selesaikan Shift &amp; Logout" Command="{Binding SelesaikanShiftCommand}" Width="190" Height="38" Background="#DC2626" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

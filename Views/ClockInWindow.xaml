@@ -1,0 +1,28 @@
+﻿<Window x:Class="KasirKu.Views.ClockInWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Mulai Shift Kasir (Clock-In)" Height="380" Width="420"
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize">
+
+    <Grid Margin="20">
+        <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Mulai Shift Kerja" FontSize="20" FontWeight="Bold" Foreground="#0D6EFD" Margin="0,0,0,15" HorizontalAlignment="Center"/>
+
+            <!-- Info Kasir -->
+            <TextBlock Text="Kasir Bertugas:" FontWeight="Bold" Margin="0,0,0,2"/>
+            <TextBox Text="{Binding NamaKasir}" IsReadOnly="True" Background="#E9ECEF" Padding="8" Margin="0,0,0,12"/>
+
+            <!-- Pilih Shift -->
+            <TextBlock Text="Pilih Shift Kerja:" FontWeight="Bold" Margin="0,0,0,2"/>
+            <ComboBox ItemsSource="{Binding DaftarShift}" DisplayMemberPath="NamaShift" SelectedItem="{Binding ShiftTerpilih}" Padding="8" Margin="0,0,0,12"/>
+
+            <!-- Input Modal Awal -->
+            <TextBlock Text="Modal Awal Laci Kasir (Rp):" FontWeight="Bold" Margin="0,0,0,2"/>
+            <TextBox Text="{Binding ModalAwalText, UpdateSourceTrigger=PropertyChanged}" Padding="8" Margin="0,0,0,20" FontSize="14" FontWeight="Bold"/>
+
+            <!-- Tombol Action -->
+            <Button Content="Buka Shift &amp; Mulai Transaksi" Command="{Binding MulaiShiftCommand}" 
+                    Background="#198754" Foreground="White" FontWeight="Bold" Padding="10" FontSize="14" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

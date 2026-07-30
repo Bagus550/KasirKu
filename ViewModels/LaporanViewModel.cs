@@ -150,13 +150,13 @@ namespace KasirKu.ViewModels
                 try
                 {
                     var sb = new StringBuilder();
-                    // Header Kolom CSV
-                    sb.AppendLine("Nomor Nota;Tanggal;Total Belanja;Total Bayar;Kembalian");
+                    // Header Kolom CSV (Ditambahkan kolom Kasir)
+                    sb.AppendLine("Nomor Nota;Tanggal;Kasir;Total Belanja;Total Bayar;Kembalian");
 
-                    // Isi Baris Transaksi
+                    // Isi Baris Transaksi (Ditambahkan t.NamaKasir)
                     foreach (var t in DaftarTransaksi)
                     {
-                        sb.AppendLine($"{t.NomorNota};{t.Tanggal:dd/MM/yyyy HH:mm};{t.TotalHarga};{t.TotalBayar};{t.Kembalian}");
+                        sb.AppendLine($"{t.NomorNota};{t.Tanggal:dd/MM/yyyy HH:mm};{t.NamaKasir};{t.TotalHarga};{t.TotalBayar};{t.Kembalian}");
                     }
 
                     // Tulis ke file menggunakan encoding UTF8 dengan BOM agar tanda pemisah terbaca rapi di Microsoft Excel
