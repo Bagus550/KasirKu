@@ -25,14 +25,15 @@ Proyek ini juga jadi wadah belajar pengembangan aplikasi desktop dari nol — mu
 
 | Fitur | Deskripsi |
 |---|---|
-| 🛒 **Transaksi Cepat** | Scan barcode, cari produk, hitung total — semua bisa full keyboard, tanpa mouse |
-| 📦 **Manajemen Stok** | Tambah/kurang stok otomatis, alert saat stok menipis |
-| 💰 **Harga Historis** | Laporan laba-rugi tetap akurat meski harga produk berubah dari waktu ke waktu |
-| 🧾 **Cetak Struk Thermal** | Dukungan langsung ke printer 58mm/80mm via ESC/POS, bukan cuma driver Windows biasa |
-| ⏸️ **Hold Transaksi** | Tahan transaksi sementara saat pembeli lupa ambil barang, lanjut ke antrean berikutnya |
-| 📊 **Laporan** | Ringkasan penjualan harian & bulanan, produk terlaris, stok kritis |
-| 💾 **Backup Sekali Klik** | Export database & laporan ke file lokal (CSV/Excel), tanpa perlu server |
-| 🔒 **Aman Saat Mati Listrik** | SQLite dengan mode WAL — data transaksi tahan dari crash mendadak |
+| **Transaksi Cepat** | Scan barcode, cari produk, hitung total — semua bisa full keyboard, tanpa mouse |
+| **Manajemen Stok** | Tambah/kurang stok otomatis, alert saat stok menipis |
+| **Harga Historis** | Laporan laba-rugi tetap akurat meski harga produk berubah dari waktu ke waktu |
+| **Cetak Struk Thermal** | Dukungan langsung ke printer 58mm/80mm via ESC/POS, bukan cuma driver Windows biasa |
+| **Hold Transaksi** | Tahan transaksi sementara saat pembeli lupa ambil barang, lanjut ke antrean berikutnya |
+| **Laporan** | Ringkasan penjualan harian & bulanan, produk terlaris, stok kritis |
+| **Lacak & Audit Shift Kasir** | Memantau aktivitas shift kasir dan melakukan audit modal awal dan akhir shift |
+| **Backup Sekali Klik** | Export database & laporan ke file lokal (CSV/Excel), tanpa perlu server |
+| **Aman Saat Mati Listrik** | SQLite dengan mode WAL — data transaksi tahan dari crash mendadak |
 
 ## ⌨️ Navigasi Full Keyboard
 
