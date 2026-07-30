@@ -9,6 +9,14 @@ using System.Windows;
 
 namespace KasirKu.ViewModels
 {
+    public class HoldTransactionModel
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString()[..5].ToUpper();
+        public DateTime Waktu { get; set; } = DateTime.Now;
+        public List<CartItem> Items { get; set; } = new();
+        public decimal TotalHarga => Items.Sum(x => x.Subtotal);
+    }
+
     public partial class KasirViewModel : ObservableObject
     {
         // 1. Keranjang Belanja
@@ -18,6 +26,9 @@ namespace KasirKu.ViewModels
             get => _keranjang;
             set => SetProperty(ref _keranjang, value);
         }
+
+        [ObservableProperty]
+        private ObservableCollection<HoldTransactionModel> _daftarHold = new();
 
         // 2. Input Barcode / Pencarian
         private string _inputBarcode = string.Empty;
@@ -59,6 +70,51 @@ namespace KasirKu.ViewModels
 
         public KasirViewModel()
         {
+            HitungTotal();
+        }
+
+        [RelayCommand]
+        public void HoldTransaksi()
+        {
+            if (Keranjang.Count == 0)
+            {
+                MessageBox.Show("Keranjang belanja masih kosong!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var holdItem = new HoldTransactionModel
+            {
+                Items = Keranjang.ToList()
+            };
+
+            DaftarHold.Add(holdItem);
+
+            // Bersihkan Keranjang Utama & Total
+            Keranjang.Clear();
+            TotalBayar = 0;
+            HitungTotal();
+
+            MessageBox.Show($"Transaksi berhasil ditahan (ID: {holdItem.Id})!", "Hold Transaksi", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        [RelayCommand]
+        public void ResumeTransaksi(HoldTransactionModel? holdItem)
+        {
+            if (holdItem == null) return;
+
+            if (Keranjang.Count > 0)
+            {
+                var result = MessageBox.Show("Keranjang saat ini tidak kosong. Apakah ingin menggabungkan item?", "Konfirmasi", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (result == MessageBoxResult.No) return;
+            }
+
+            foreach (var item in holdItem.Items)
+            {
+                item.PropertyChanged += (s, e) => HitungTotal();
+                Keranjang.Add(item);
+            }
+
+            DaftarHold.Remove(holdItem);
             HitungTotal();
         }
 

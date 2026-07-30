@@ -18,11 +18,12 @@
             <ColumnDefinition Width="1.2*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- KIRI: Scan Barcode & Keranjang Belanja -->
+        <!-- KIRI: Scan Barcode, Keranjang Belanja, & Hold Section -->
         <Grid Grid.Column="0" Margin="0,0,15,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
@@ -37,7 +38,6 @@
 
                     <TextBlock Text="Scan Barcode / SKU:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
 
-                    <!-- Input Barcode yang otomatis memicu TambahBarang saat tekan Enter -->
                     <TextBox Grid.Column="1" Text="{Binding InputBarcode, UpdateSourceTrigger=PropertyChanged}" 
                              FontSize="14" Padding="6" VerticalAlignment="Center">
                         <TextBox.InputBindings>
@@ -56,7 +56,7 @@
                     <DataGridTextColumn Header="Nama Barang" Binding="{Binding Produk.Nama}" Width="*" IsReadOnly="True"/>
                     <DataGridTextColumn Header="Harga" Binding="{Binding HargaJual, StringFormat=N0}" Width="100" IsReadOnly="True"/>
 
-                    <!-- Column Jumlah Barang yang Bisa Di-edit Langsung -->
+                    <!-- Column Jumlah Barang -->
                     <DataGridTemplateColumn Header="Qty" Width="70">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -79,9 +79,37 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <!-- Tombol Batal Transaksi -->
-            <Button Grid.Row="2" Content="Reset / Batal Transaksi" Command="{Binding BatalTransaksiCommand}" 
-                    HorizontalAlignment="Left" Margin="0,10,0,0" Padding="8,5" Background="#FF6C757D" Foreground="White"/>
+            <!-- Tombol Batal & Tombol Hold Transaksi -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="Reset / Batal Transaksi" Command="{Binding BatalTransaksiCommand}" 
+                        Padding="8,5" Background="#FF6C757D" Foreground="White" Margin="0,0,10,0"/>
+
+                <!-- Tombol Hold (Tahan Transaksi) -->
+                <Button Content="⏸️ Hold (Tahan Transaksi)" Command="{Binding HoldTransaksiCommand}" 
+                        Padding="10,5" Background="#FFC107" Foreground="#212529" FontWeight="Bold"/>
+            </StackPanel>
+
+            <!-- Section Daftar Transaksi Di-Hold / Pending -->
+            <GroupBox Grid.Row="3" Header="⏸️ Transaksi Ditahan (Pending)" Margin="0,15,0,0" FontWeight="Bold">
+                <DataGrid ItemsSource="{Binding DaftarHold}" AutoGenerateColumns="False" IsReadOnly="True" Height="110" CanUserAddRows="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ID Hold" Binding="{Binding Id}" Width="80"/>
+                        <DataGridTextColumn Header="Waktu" Binding="{Binding Waktu, StringFormat=\{0:HH:mm:ss\}}" Width="80"/>
+                        <DataGridTextColumn Header="Items" Binding="{Binding Items.Count}" Width="60"/>
+                        <DataGridTextColumn Header="Total Rp" Binding="{Binding TotalHarga, StringFormat=N0}" Width="100"/>
+                        <DataGridTemplateColumn Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="▶️ Lanjutkan" 
+                                            Command="{Binding DataContext.ResumeTransaksiCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Background="#198754" Foreground="White" FontWeight="Bold" Padding="5,2"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </GroupBox>
         </Grid>
 
         <!-- KANAN: Total, Input Bayar, & Kembalian -->
@@ -122,7 +150,7 @@
                 <!-- Tombol Proses Bayar -->
                 <Border Grid.Row="3" CornerRadius="5" ClipToBounds="True">
                     <Button Content="PROSES BAYAR (ENTER)" Command="{Binding ProsesBayarCommand}" 
-                        Height="50" FontSize="16" FontWeight="Bold" Background="#198754" Foreground="White" Click="Button_Click"/>
+                            Height="50" FontSize="16" FontWeight="Bold" Background="#198754" Foreground="White"/>
                 </Border>
             </Grid>
         </Border>

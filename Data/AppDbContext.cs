@@ -1,4 +1,5 @@
 ﻿using KasirKu.Models;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
@@ -17,7 +18,25 @@ namespace KasirKu.Data
             // Simpan database SQLite di folder lokal aplikasi
             string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
 
-            optionsBuilder.UseSqlite($"Data Source={dbPath}");
+            var connectionString = new SqliteConnectionStringBuilder
+            {
+                DataSource = dbPath
+            }.ToString();
+
+            var connection = new SqliteConnection(connectionString);
+            connection.Open();
+
+            // Eksekusi perintah PRAGMA untuk mengaktifkan WAL Mode & Synchronous Normal
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+                    PRAGMA journal_mode = WAL;
+                    PRAGMA synchronous = NORMAL;
+                ";
+                command.ExecuteNonQuery();
+            }
+
+            optionsBuilder.UseSqlite(connection);
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

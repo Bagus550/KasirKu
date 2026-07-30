@@ -6,114 +6,158 @@
              xmlns:vm="clr-namespace:KasirKu.ViewModels"
              mc:Ignorable="d" 
              d:DataContext="{d:DesignInstance Type=vm:LaporanViewModel, IsDesignTimeCreatable=False}"
-             d:DesignHeight="600" d:DesignWidth="950">
+             d:DesignHeight="850" d:DesignWidth="950">
 
     <UserControl.DataContext>
         <vm:LaporanViewModel />
     </UserControl.DataContext>
 
-    <Grid Margin="15">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <!-- ScrollViewer agar tampilan tidak bertumpuk jika resolusi layar terbatas -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="15">
 
-        <!-- 1. BARIS FILTER TANGGAL -->
-        <Border Grid.Row="0" Background="#F8F9FA" BorderBrush="#DEE2E6" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,15">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Dari Tanggal:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
-                <DatePicker SelectedDate="{Binding TanggalAwal}" Width="130" Margin="0,0,15,0"/>
+            <!-- 1. BARIS FILTER TANGGAL & ACTION BUTTONS -->
+            <Border Background="#F8F9FA" BorderBrush="#DEE2E6" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,15">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <TextBlock Text="Sampai Tanggal:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
-                <DatePicker SelectedDate="{Binding TanggalAkhir}" Width="130" Margin="0,0,15,0"/>
+                    <WrapPanel Grid.Column="0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,10,5">
+                            <TextBlock Text="Dari:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,5,0"/>
+                            <DatePicker SelectedDate="{Binding TanggalAwal}" Width="115"/>
+                        </StackPanel>
 
-                <Button Content="Tampilkan" Command="{Binding MuatLaporanCommand}" 
-                        Padding="12,5" Background="#0D6EFD" Foreground="White" FontWeight="Bold" Margin="0,0,10,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,10,5">
+                            <TextBlock Text="Sampai:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,5,0"/>
+                            <DatePicker SelectedDate="{Binding TanggalAkhir}" Width="115"/>
+                        </StackPanel>
 
-                <Button Content="Hari Ini" Command="{Binding FilterHariIniCommand}" 
-                        Padding="10,5" Background="#6C757D" Foreground="White" Margin="0,0,5,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <Button Content="Tampilkan" Command="{Binding MuatLaporanCommand}" 
+                                    Padding="8,4" Background="#0D6EFD" Foreground="White" FontWeight="Bold" Margin="0,0,5,0"/>
 
-                <Button Content="Bulan Ini" Command="{Binding FilterBulanIniCommand}" 
-                        Padding="10,5" Background="#6C757D" Foreground="White"/>
-            </StackPanel>
-        </Border>
+                            <Button Content="Hari Ini" Command="{Binding FilterHariIniCommand}" 
+                                    Padding="8,4" Background="#6C757D" Foreground="White" Margin="0,0,5,0"/>
 
-        <!-- 2. BARIS CARD RINGKASAN (OMZET, TRANSAKSI, ITEM) -->
-        <Grid Grid.Row="1" Margin="0,0,0,15">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+                            <Button Content="Bulan Ini" Command="{Binding FilterBulanIniCommand}" 
+                                    Padding="8,4" Background="#6C757D" Foreground="White"/>
+                        </StackPanel>
+                    </WrapPanel>
 
-            <!-- Card 1: Total Omzet -->
-            <Border Grid.Column="0" Background="#198754" CornerRadius="5" Padding="15" Margin="0,0,10,0">
-                <StackPanel>
-                    <TextBlock Text="TOTAL OMZET" Foreground="White" FontSize="12" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding TotalOmzet, StringFormat=Rp \{0:N0\}}" Foreground="White" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
-                </StackPanel>
-            </Border>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                        <Button Content="📊 Export CSV" Command="{Binding ExportCsvCommand}" 
+                                Background="#198754" Foreground="White" FontWeight="Bold" Padding="10,5" Margin="0,0,8,0"/>
 
-            <!-- Card 2: Jumlah Transaksi -->
-            <Border Grid.Column="1" Background="#0D6EFD" CornerRadius="5" Padding="15" Margin="0,0,10,0">
-                <StackPanel>
-                    <TextBlock Text="TOTAL TRANSAKSI" Foreground="White" FontSize="12" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding TotalJumlahTransaksi, StringFormat=\{0\} Transaksi}" Foreground="White" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Card 3: Item Terjual -->
-            <Border Grid.Column="2" Background="#FFC107" CornerRadius="5" Padding="15">
-                <StackPanel>
-                    <TextBlock Text="TOTAL ITEM TERJUAL" Foreground="#212529" FontSize="12" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding TotalItemTerjual, StringFormat=\{0\} Pcs}" Foreground="#212529" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
-                </StackPanel>
-            </Border>
-        </Grid>
-
-        <!-- 3. DETAIL LAPORAN: TABEL NOTA (KIRI) & RINCIAN ITEM (KANAN) -->
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.4*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Tabel Riwayat Nota -->
-            <GroupBox Grid.Column="0" Header="Daftar Nota Transaksi" Margin="0,0,10,0" FontWeight="Bold">
-                <DataGrid ItemsSource="{Binding DaftarTransaksi}" SelectedItem="{Binding TransaksiTerpilih}" 
-                          AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" Margin="5">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="No. Nota" Binding="{Binding NomorNota}" Width="*"/>
-                        <DataGridTextColumn Header="Waktu" Binding="{Binding Tanggal, StringFormat=\{0:dd/MM/yyyy HH:mm\}}" Width="120"/>
-                        <DataGridTextColumn Header="Total" Binding="{Binding TotalHarga, StringFormat=N0}" Width="100"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </GroupBox>
-
-            <!-- Rincian Item Nota Terpilih -->
-            <GroupBox Grid.Column="1" Header="Rincian Barang Dipilih" FontWeight="Bold">
-                <Grid Margin="5">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <StackPanel Grid.Row="0" Margin="0,0,0,10">
-                        <TextBlock Text="{Binding TransaksiTerpilih.NomorNota, TargetNullValue='Pilih nota untuk lihat rincian'}" 
-                                   Foreground="#0D6EFD" FontSize="14" FontWeight="Bold"/>
+                        <Button Content="💾 Backup DB" Command="{Binding BackupDatabaseCommand}" 
+                                Background="#0D6EFD" Foreground="White" FontWeight="Bold" Padding="10,5"/>
                     </StackPanel>
+                </Grid>
+            </Border>
 
-                    <DataGrid Grid.Row="1" ItemsSource="{Binding TransaksiTerpilih.DetailTransaksi}" 
-                              AutoGenerateColumns="False" IsReadOnly="True">
+            <!-- 2. BARIS CARD RINGKASAN -->
+            <Grid Margin="0,0,0,15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Background="#198754" CornerRadius="5" Padding="15" Margin="0,0,10,0">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL OMZET" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding TotalOmzet, StringFormat=Rp \{0:N0\}}" Foreground="White" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="1" Background="#0D6EFD" CornerRadius="5" Padding="15" Margin="0,0,10,0">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL TRANSAKSI" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding TotalJumlahTransaksi, StringFormat=\{0\} Transaksi}" Foreground="White" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Background="#FFC107" CornerRadius="5" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL ITEM TERJUAL" Foreground="#212529" FontSize="12" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding TotalItemTerjual, StringFormat=\{0\} Pcs}" Foreground="#212529" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- 3. DETAIL LAPORAN: TABEL NOTA & RINCIAN ITEM (Diberi Height Pasti) -->
+            <Grid Margin="0,0,0,15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Tabel Riwayat Nota -->
+                <GroupBox Grid.Column="0" Header="Daftar Nota Transaksi" Margin="0,0,10,0" FontWeight="Bold" Padding="5">
+                    <DataGrid ItemsSource="{Binding DaftarTransaksi}" SelectedItem="{Binding TransaksiTerpilih}" 
+                              AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" Height="220">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Nama Produk" Binding="{Binding NamaProduk}" Width="*"/>
-                            <DataGridTextColumn Header="Qty" Binding="{Binding Jumlah}" Width="45"/>
-                            <DataGridTextColumn Header="Subtotal" Binding="{Binding Subtotal, StringFormat=N0}" Width="80"/>
+                            <DataGridTextColumn Header="No. Nota" Binding="{Binding NomorNota}" Width="*"/>
+                            <DataGridTextColumn Header="Waktu" Binding="{Binding Tanggal, StringFormat=\{0:dd/MM/yyyy HH:mm\}}" Width="120"/>
+                            <DataGridTextColumn Header="Total" Binding="{Binding TotalHarga, StringFormat=N0}" Width="100"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                </Grid>
-            </GroupBox>
-        </Grid>
-    </Grid>
+                </GroupBox>
+
+                <!-- Rincian Item Nota Terpilih -->
+                <GroupBox Grid.Column="1" Header="Rincian Barang Dipilih" FontWeight="Bold" Padding="5">
+                    <Grid Height="220">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="{Binding TransaksiTerpilih.NomorNota, TargetNullValue='Pilih nota untuk lihat rincian'}" 
+                                   Foreground="#0D6EFD" FontSize="13" FontWeight="Bold" Margin="0,0,0,5"/>
+
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding TransaksiTerpilih.DetailTransaksi}" 
+                                  AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Nama Produk" Binding="{Binding NamaProduk}" Width="*"/>
+                                <DataGridTextColumn Header="Qty" Binding="{Binding Jumlah}" Width="45"/>
+                                <DataGridTextColumn Header="Subtotal" Binding="{Binding Subtotal, StringFormat=N0}" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </GroupBox>
+            </Grid>
+
+            <!-- 4. WIDGET TAMBAHAN: TOP PRODUK TERLARIS & ALERT STOK KRITIS -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Widget Top Produk Terlaris -->
+                <GroupBox Grid.Column="0" Header="🔥 Top 5 Produk Terlaris" Margin="0,0,10,0" FontWeight="Bold" Padding="5">
+                    <DataGrid ItemsSource="{Binding ProdukTerlaris}" AutoGenerateColumns="False" IsReadOnly="True" Height="150" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Nama Produk" Binding="{Binding NamaProduk}" Width="*"/>
+                            <DataGridTextColumn Header="Terjual" Binding="{Binding TotalTerjual, StringFormat=\{0\} Pcs}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </GroupBox>
+
+                <!-- Widget Stok Kritis / Menipis -->
+                <GroupBox Grid.Column="1" Header="⚠️ Alert Stok Menipis / Habis" FontWeight="Bold" Padding="5">
+                    <DataGrid ItemsSource="{Binding StokKritis}" AutoGenerateColumns="False" IsReadOnly="True" Height="150" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Produk" Binding="{Binding Nama}" Width="*"/>
+                            <DataGridTextColumn Header="Sisa Stok" Binding="{Binding Stok}" Width="80"/>
+                            <DataGridTextColumn Header="Min. Stok" Binding="{Binding StokMinimum}" Width="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </GroupBox>
+            </Grid>
+
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>
