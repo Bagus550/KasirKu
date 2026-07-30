@@ -100,7 +100,7 @@
                         <DataGridTemplateColumn Width="*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Content="▶️ Lanjutkan" 
+                                    <Button Content="Lanjutkan" 
                                             Command="{Binding DataContext.ResumeTransaksiCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}"
                                             Background="#198754" Foreground="White" FontWeight="Bold" Padding="5,2"/>
@@ -150,7 +150,7 @@
                 <!-- Tombol Proses Bayar -->
                 <Border Grid.Row="3" CornerRadius="5" ClipToBounds="True">
                     <Button Content="PROSES BAYAR (ENTER)" Command="{Binding ProsesBayarCommand}" 
-                            Height="50" FontSize="16" FontWeight="Bold" Background="#198754" Foreground="White"/>
+                            Height="50" FontSize="16" FontWeight="Bold" Background="#198754" Foreground="White" VerticalAlignment="Bottom"/>
                 </Border>
             </Grid>
         </Border>

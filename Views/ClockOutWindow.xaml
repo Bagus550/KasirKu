@@ -22,7 +22,7 @@
 
         <!-- Card Detail Calculation -->
         <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="15" BorderBrush="#E2E8F0" BorderThickness="1">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ScrollViewer VerticalScrollBarVisibility="Hidden">
                 <StackPanel>
                     <Grid Margin="0,0,0,8">
                         <TextBlock Text="Kasir / Operator:" Foreground="#64748B"/>
