@@ -92,9 +92,9 @@ dotnet run
 - [x] Perancangan database & arsitektur MVVM
 - [x] Modul manajemen produk & stok
 - [x] Modul transaksi kasir
-- [ ] Integrasi printer thermal (ESC/POS)
-- [ ] Modul laporan
-- [ ] Login & manajemen role kasir
+- [x] Integrasi printer thermal (ESC/POS)
+- [x] Modul laporan
+- [x] Login & manajemen role kasir
 - [ ] Backup/restore database
 - [ ] *Next version:* multi-cabang, sync cloud, dashboard analitik
 

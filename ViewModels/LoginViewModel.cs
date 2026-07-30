@@ -49,5 +49,10 @@ namespace KasirKu.ViewModels
 
             LoginBerhasilEvent?.Invoke(this, user);
         }
+        public void ResetForm()
+        {
+            Username = string.Empty;
+            Password = string.Empty;
+        }
     }
 }

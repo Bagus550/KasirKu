@@ -48,6 +48,10 @@ namespace KasirKu
 
         private void BtnLogout_Click(object sender, RoutedEventArgs e)
         {
+            if (ViewLogin.DataContext is LoginViewModel loginVm)
+            {
+                loginVm.ResetForm();
+            }
             GridUtama.Visibility = Visibility.Collapsed;
             ViewLogin.Visibility = Visibility.Visible;
         }
