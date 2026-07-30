@@ -55,7 +55,14 @@ namespace KasirKu.Data
             // Seed Data Produk Awal
             modelBuilder.Entity<Produk>().HasData(
                 new Produk { Id = 1, Nama = "Beras 5kg", SKU = "BRS01", Kategori = "Sembako", HargaBeli = 60000, HargaJual = 68000, Stok = 20, StokMinimum = 5 },
-                new Produk { Id = 2, Nama = "Minyak Goreng 1L", SKU = "MYK01", Kategori = "Sembako", HargaBeli = 14000, HargaJual = 16000, Stok = 30, StokMinimum = 10 }
+                new Produk { Id = 2, Nama = "Minyak Goreng 1L", SKU = "MYK01", Kategori = "Sembako", HargaBeli = 14000, HargaJual = 16000, Stok = 30, StokMinimum = 10 },
+                new Produk { Id = 3, Nama = "Tepung Terigu 1kg", SKU = "TPG01", Kategori = "Sembako", HargaBeli = 10000, HargaJual = 12000, Stok = 30, StokMinimum = 5 },
+                new Produk { Id = 2, Nama = "Tepung Tapioka 1Kg", SKU = "TPG02", Kategori = "Sembako", HargaBeli = 14000, HargaJual = 15000, Stok = 30, StokMinimum = 10 },
+                new Produk { Id = 4, Nama = "Indomie Goreng 1 Bks", SKU = "IND01", Kategori = "Makanan Instan", HargaBeli = 3000, HargaJual = 3500, Stok = 80, StokMinimum = 10 },
+                new Produk { Id = 5, Nama = "Indomie Kuah Ayam Bawang 1 Bks", SKU = "IND02", Kategori = "Makanan Instan", HargaBeli = 3000, HargaJual = 3500, Stok = 80, StokMinimum = 10 },
+                new Produk { Id = 6, Nama = "Mie Sedaap Soto 1 Bks", SKU = "SDP01", Kategori = "Makanan Instan", HargaBeli = 3000, HargaJual = 3500, Stok = 80, StokMinimum = 10 },
+                new Produk { Id = 7, Nama = "Garam Daun 250g", SKU = "GRM01", Kategori = "Penyedap", HargaBeli = 2000, HargaJual = 2500, Stok = 30, StokMinimum = 5 },
+                new Produk { Id = 8, Nama = "Sasa Penyedap Rasa 250g", SKU = "SSA01", Kategori = "Penyedap", HargaBeli = 13200, HargaJual = 14000, Stok = 50, StokMinimum = 10 }
             );
 
             // Seed Data Shift Awal (Fleksibel: Pagi, Siang, Sore/Malam, Malam 24 Jam)
