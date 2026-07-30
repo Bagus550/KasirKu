@@ -95,7 +95,7 @@ dotnet run
 - [x] Integrasi printer thermal (ESC/POS)
 - [x] Modul laporan
 - [x] Login & manajemen role kasir
-- [ ] Backup/restore database
+- [x] Backup/restore database
 - [ ] *Next version:* multi-cabang, sync cloud, dashboard analitik
 
 ## 📁 Struktur Data Singkat
