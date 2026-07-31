@@ -55,7 +55,7 @@ namespace KasirKu.Services
                 return new TransactionResult
                 {
                     IsSuccess = false,
-                    Message = $"Uang pembayar kurang! Total: Rp{totalHarga:N0}, Dibayar: Rp{totalBayar:N0}"
+                    Message = $"Uang pembayaran kurang! Total: Rp{totalHarga:N0}, Dibayar: Rp{totalBayar:N0}"
                 };
             }
 
@@ -75,6 +75,7 @@ namespace KasirKu.Services
 
                     if (produk == null)
                     {
+                        await dbTransaction.RollbackAsync();
                         return new TransactionResult
                         {
                             IsSuccess = false,
@@ -84,6 +85,7 @@ namespace KasirKu.Services
 
                     if (produk.Stok < cartItem.Jumlah)
                     {
+                        await dbTransaction.RollbackAsync();
                         return new TransactionResult
                         {
                             IsSuccess = false,
@@ -91,7 +93,7 @@ namespace KasirKu.Services
                         };
                     }
 
-                    // Potong Stok Produk
+                    // Potong Stok Produk (Model Produk harus memiliki atribut [ConcurrencyCheck] di property Stok)
                     produk.Stok -= cartItem.Jumlah;
 
                     // Konversi CartItem ke DetailTransaksi
@@ -151,9 +153,20 @@ namespace KasirKu.Services
                     TransaksiData = transaksi
                 };
             }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Rollback jika ada konflik update stok bersamaan
+                await dbTransaction.RollbackAsync();
+
+                return new TransactionResult
+                {
+                    IsSuccess = false,
+                    Message = "Gagal memproses transaksi: Stok barang telah berubah atau diubah oleh transaksi/kasir lain. Silakan coba lagi."
+                };
+            }
             catch (Exception ex)
             {
-                // Rollback jika ada error
+                // Rollback jika ada error tak terduga lainnya
                 await dbTransaction.RollbackAsync();
 
                 var innerMsg = ex.InnerException != null ? ex.InnerException.Message : ex.Message;

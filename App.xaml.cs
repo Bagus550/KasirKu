@@ -38,6 +38,7 @@ namespace KasirKu
             services.AddDbContext<AppDbContext>();
 
             // Register Services
+            services.AddTransient<IDialogService, DialogService>();
             services.AddTransient<IProductService, ProductService>();
             services.AddTransient<ITransactionService, TransactionService>();
 

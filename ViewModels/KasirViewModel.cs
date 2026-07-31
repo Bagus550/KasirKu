@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Windows;
+using System.Threading.Tasks;
 
 namespace KasirKu.ViewModels
 {
@@ -23,6 +23,7 @@ namespace KasirKu.ViewModels
     {
         private readonly ITransactionService _transactionService;
         private readonly IProductService _productService;
+        private readonly IDialogService _dialogService;
 
         // Properties UI menggunakan CommunityToolkit Source Generator
         [ObservableProperty]
@@ -43,15 +44,16 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private decimal _kembalian;
 
-        public KasirViewModel()
-        {
-            HitungTotal();
-        }
-
-        public KasirViewModel(ITransactionService transactionService, IProductService productService)
+        // Constructor Utama (Semua dependensi di-inject via DI Container)
+        public KasirViewModel(
+            ITransactionService transactionService,
+            IProductService productService,
+            IDialogService dialogService)
         {
             _transactionService = transactionService;
             _productService = productService;
+            _dialogService = dialogService;
+
             HitungTotal();
         }
 
@@ -65,7 +67,7 @@ namespace KasirKu.ViewModels
         {
             if (Keranjang.Count == 0)
             {
-                MessageBox.Show("Keranjang belanja masih kosong!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Keranjang belanja masih kosong!");
                 return;
             }
 
@@ -75,10 +77,9 @@ namespace KasirKu.ViewModels
             };
 
             DaftarHold.Add(holdItem);
-
             ResetKeranjang();
 
-            MessageBox.Show($"Transaksi berhasil ditahan (ID: {holdItem.Id})!", "Hold Transaksi", MessageBoxButton.OK, MessageBoxImage.Information);
+            _dialogService.ShowInfo($"Transaksi berhasil ditahan (ID: {holdItem.Id})!", "Hold Transaksi");
         }
 
         [RelayCommand]
@@ -88,8 +89,8 @@ namespace KasirKu.ViewModels
 
             if (Keranjang.Count > 0)
             {
-                var result = MessageBox.Show("Keranjang saat ini tidak kosong. Apakah ingin menggabungkan item?", "Konfirmasi", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (result == MessageBoxResult.No) return;
+                bool konfirmasi = _dialogService.ShowConfirmation("Keranjang saat ini tidak kosong. Apakah ingin menggabungkan item?");
+                if (!konfirmasi) return;
             }
 
             foreach (var item in holdItem.Items)
@@ -108,26 +109,20 @@ namespace KasirKu.ViewModels
         {
             if (string.IsNullOrWhiteSpace(InputBarcode)) return;
 
-            if (_productService == null)
-            {
-                MessageBox.Show("ProductService belum terinisialisasi / ter-inject dengan benar!", "Error System", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
             try
             {
                 var produk = await _productService.GetProductBySkuOrNameAsync(InputBarcode);
 
                 if (produk == null)
                 {
-                    MessageBox.Show($"Produk dengan SKU/Nama '{InputBarcode}' tidak ditemukan!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    _dialogService.ShowWarning($"Produk dengan SKU/Nama '{InputBarcode}' tidak ditemukan!");
                     InputBarcode = string.Empty;
                     return;
                 }
 
                 if (produk.Stok <= 0)
                 {
-                    MessageBox.Show($"Stok produk '{produk.Nama}' habis!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    _dialogService.ShowWarning($"Stok produk '{produk.Nama}' habis!");
                     InputBarcode = string.Empty;
                     return;
                 }
@@ -137,7 +132,7 @@ namespace KasirKu.ViewModels
                 {
                     if (itemInCart.Jumlah + 1 > produk.Stok)
                     {
-                        MessageBox.Show($"Stok '{produk.Nama}' tidak mencukupi! Sisa stok: {produk.Stok}", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        _dialogService.ShowWarning($"Stok '{produk.Nama}' tidak mencukupi! Sisa stok: {produk.Stok}");
                         InputBarcode = string.Empty;
                         return;
                     }
@@ -155,7 +150,7 @@ namespace KasirKu.ViewModels
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Terjadi kesalahan: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError($"Terjadi kesalahan: {ex.Message}");
             }
         }
 
@@ -183,13 +178,13 @@ namespace KasirKu.ViewModels
         {
             if (Keranjang.Count == 0)
             {
-                MessageBox.Show("Keranjang belanja masih kosong!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Keranjang belanja masih kosong!");
                 return;
             }
 
             if (TotalBayar < TotalHarga)
             {
-                MessageBox.Show("Uang pembayaran kurang!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Uang pembayaran kurang!");
                 return;
             }
 
@@ -208,18 +203,16 @@ namespace KasirKu.ViewModels
                     PrinterService.CetakStruk(result.TransaksiData);
                 }
 
-                MessageBox.Show(
+                _dialogService.ShowInfo(
                     $"Transaksi Berhasil!\nNota: {result.TransaksiData?.NomorNota}\nKasir: {result.TransaksiData?.NamaKasir}\nKembalian: Rp {result.Kembalian:N0}",
-                    "Sukses",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information
+                    "Sukses"
                 );
 
                 ResetKeranjang();
             }
             else
             {
-                MessageBox.Show(result.Message, "Gagal Transaksi", MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError(result.Message, "Gagal Transaksi");
             }
         }
 

@@ -1,5 +1,5 @@
 ﻿using KasirKu.Models;
-using Microsoft.Data.Sqlite;
+using KasirKu.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
@@ -8,51 +8,60 @@ namespace KasirKu.Data
 {
     public class AppDbContext : DbContext
     {
-        public DbSet<Produk> Produk { get; set; }
-        public DbSet<Kasir> Kasir { get; set; }
-        public DbSet<Transaksi> Transaksi { get; set; }
-        public DbSet<DetailTransaksi> DetailTransaksi { get; set; }
+        public DbSet<Produk> Produk { get; set; } = null!;
+        public DbSet<Kasir> Kasir { get; set; } = null!;
+        public DbSet<Transaksi> Transaksi { get; set; } = null!;
+        public DbSet<DetailTransaksi> DetailTransaksi { get; set; } = null!;
 
-        // DbSet Baru untuk Pelacakan Kasir & Shift
-        public DbSet<Shift> Shift { get; set; }
-        public DbSet<KasirSession> KasirSession { get; set; }
-        public DbSet<AuditLog> AuditLog { get; set; }
+        // DbSet untuk Pelacakan Kasir & Shift
+        public DbSet<Shift> Shift { get; set; } = null!;
+        public DbSet<KasirSession> KasirSession { get; set; } = null!;
+        public DbSet<AuditLog> AuditLog { get; set; } = null!;
+
+        public AppDbContext() { }
+
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
-
-            var connectionString = new SqliteConnectionStringBuilder
+            if (!optionsBuilder.IsConfigured)
             {
-                DataSource = dbPath
-            }.ToString();
+                string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
 
-            var connection = new SqliteConnection(connectionString);
-            connection.Open();
-
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = @"
-                    PRAGMA journal_mode = WAL;
-                    PRAGMA synchronous = NORMAL;
-                ";
-                command.ExecuteNonQuery();
+                // Serahkan pembuatan & penutupan koneksi SQLite ke EF Core sepenuhnya
+                optionsBuilder.UseSqlite($"Data Source={dbPath}");
             }
-
-            optionsBuilder.UseSqlite(connection);
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Seed Data Kasir Awal
+            // Dummy object hanya untuk dipakai parameter HashPassword
+            var dummyAdmin = new Kasir { Id = 1, Username = "admin" };
+            var dummyKasir = new Kasir { Id = 2, Username = "kasir" };
+
+            // 1. Seed Data Kasir Awal dengan PASSWORD HASHED (Priority 1)
             modelBuilder.Entity<Kasir>().HasData(
-                new Kasir { Id = 1, Nama = "Admin KasirKu", Username = "admin", PasswordHash = "admin123", Role = "Admin" },
-                new Kasir { Id = 2, Nama = "Kasir Toko", Username = "kasir", PasswordHash = "kasir123", Role = "Kasir" }
+                new Kasir
+                {
+                    Id = 1,
+                    Nama = "Admin KasirKu",
+                    Username = "admin",
+                    PasswordHash = PasswordHasherHelper.HashPassword(dummyAdmin, "admin123"),
+                    Role = "Admin"
+                },
+                new Kasir
+                {
+                    Id = 2,
+                    Nama = "Kasir Toko",
+                    Username = "kasir",
+                    PasswordHash = PasswordHasherHelper.HashPassword(dummyKasir, "kasir123"),
+                    Role = "Kasir"
+                }
             );
 
-            // Seed Data Produk Awal
+            // 2. Seed Data Produk Awal
             modelBuilder.Entity<Produk>().HasData(
                 new Produk { Id = 1, Nama = "Beras 5kg", SKU = "BRS01", Kategori = "Sembako", HargaBeli = 60000, HargaJual = 68000, Stok = 20, StokMinimum = 5 },
                 new Produk { Id = 2, Nama = "Minyak Goreng 1L", SKU = "MYK01", Kategori = "Sembako", HargaBeli = 14000, HargaJual = 16000, Stok = 30, StokMinimum = 10 },
@@ -65,7 +74,7 @@ namespace KasirKu.Data
                 new Produk { Id = 9, Nama = "Sasa Penyedap Rasa 250g", SKU = "SSA01", Kategori = "Penyedap", HargaBeli = 13200, HargaJual = 14000, Stok = 50, StokMinimum = 10 }
             );
 
-            // Seed Data Shift Awal (Fleksibel: Pagi, Siang, Sore/Malam, Malam 24 Jam)
+            // 3. Seed Data Shift Awal
             modelBuilder.Entity<Shift>().HasData(
                 new Shift { Id = 1, NamaShift = "Shift Pagi", JamMulai = new TimeSpan(6, 0, 0), JamSelesai = new TimeSpan(12, 0, 0), IsAktif = true },
                 new Shift { Id = 2, NamaShift = "Shift Siang", JamMulai = new TimeSpan(12, 0, 0), JamSelesai = new TimeSpan(17, 0, 0), IsAktif = true },

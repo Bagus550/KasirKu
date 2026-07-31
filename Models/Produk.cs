@@ -11,7 +11,8 @@ namespace KasirKu.Models
         public string? Kategori { get; set; } = "Umum";
         public decimal HargaBeli { get; set; } = 0;
         public decimal HargaJual { get; set; } = 0;
-        public int Stok { get; set; } = 0;
+        [ConcurrencyCheck] // Mencegah konflik update stok bersamaan
+        public int Stok { get; set; }
         public int StokMinimum { get; set; } = 0;
     }
 }
