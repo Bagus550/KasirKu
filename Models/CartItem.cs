@@ -14,30 +14,22 @@ namespace KasirKu.Models
             get => _jumlah;
             set
             {
-                // Validasi 1: Jumlah tidak boleh kurang dari 1
                 if (value < 1)
                 {
-                    MessageBox.Show("Jumlah barang minimal 1!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    OnPropertyChanged(); // Trigger update UI agar kembali ke nilai lama
-                    return;
+                    value = 1;
                 }
 
-                // Validasi 2: Jumlah tidak boleh melebihi stok yang ada
-                if (Produk != null && value > Produk.Stok)
-                {
-                    MessageBox.Show($"Stok '{Produk.Nama}' tidak mencukupi! Sisa stok: {Produk.Stok}", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    _jumlah = Produk.Stok; // Set ke stok maksimal
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(Subtotal));
-                    return;
-                }
+                if (value > Produk.Stok)
+                    value = Produk.Stok;
 
-                if (_jumlah != value)
-                {
-                    _jumlah = value;
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(Subtotal));
-                }
+                if (_jumlah == value)
+                    return;
+
+                _jumlah = value;
+
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(Subtotal));
+
             }
         }
 

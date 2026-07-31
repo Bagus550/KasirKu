@@ -91,10 +91,7 @@ namespace KasirKu.ViewModels
 
             DaftarHold.Add(holdItem);
 
-            // Bersihkan Keranjang Utama & Total
-            Keranjang.Clear();
-            TotalBayar = 0;
-            HitungTotal();
+            ResetKeranjang();
 
             MessageBox.Show($"Transaksi berhasil ditahan (ID: {holdItem.Id})!", "Hold Transaksi", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -188,9 +185,7 @@ namespace KasirKu.ViewModels
         [RelayCommand]
         public void BatalTransaksi()
         {
-            Keranjang.Clear();
-            TotalBayar = 0;
-            HitungTotal();
+            ResetKeranjang();
         }
 
         // Command: Simpan Transaksi & Potong Stok
@@ -283,6 +278,13 @@ namespace KasirKu.ViewModels
         private void HitungKembalian()
         {
             Kembalian = TotalBayar > TotalHarga ? TotalBayar - TotalHarga : 0;
+        }
+
+        private void ResetKeranjang()
+        {
+            Keranjang.Clear();
+            TotalBayar = 0;
+            HitungTotal();
         }
     }
 }
