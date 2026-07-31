@@ -175,7 +175,6 @@ namespace KasirKu.ViewModels
             ResetKeranjang();
         }
 
-        // Command: Simpan Transaksi, Potong Stok & Cetak Struk Async
         [RelayCommand]
         public async Task ProsesBayarAsync()
         {
@@ -191,31 +190,44 @@ namespace KasirKu.ViewModels
                 return;
             }
 
-            var result = await _transactionService.ProcessTransactionAsync(
-                Keranjang.ToList(),
-                TotalBayar,
-                SessionManager.CurrentKasir?.Id ?? 1,
-                SessionManager.CurrentSession?.Id
-            );
-
-            if (result.IsSuccess)
+            try
             {
-                // Cetak Struk secara Async via PrinterService
-                if (result.TransaksiData != null)
-                {
-                    await _printerService.CetakStrukAsync(result.TransaksiData);
-                }
+                var listItems = Keranjang.ToList();
+                decimal bayar = TotalBayar;
+                int kasirId = SessionManager.CurrentKasir?.Id ?? 1;
+                int? sessionId = SessionManager.CurrentSession?.Id;
 
-                _dialogService.ShowInfo(
-                    $"Transaksi Berhasil!\nNota: {result.TransaksiData?.NomorNota}\nKasir: {result.TransaksiData?.NamaKasir}\nKembalian: Rp {result.Kembalian:N0}",
-                    "Sukses Transaksi"
+                // Process Transaction via Service (Sudah menggunakan DbContextFactory / WAL)
+                var result = await _transactionService.ProcessTransactionAsync(
+                    listItems,
+                    bayar,
+                    kasirId,
+                    sessionId
                 );
 
-                ResetKeranjang();
+                if (result.IsSuccess)
+                {
+                    // Cetak Struk Async (NullPrinterService saat dev / PrinterService saat ada fisik)
+                    if (result.TransaksiData != null)
+                    {
+                        await _printerService.CetakStrukAsync(result.TransaksiData);
+                    }
+
+                    _dialogService.ShowInfo(
+                        $"Transaksi Berhasil!\nNota: {result.TransaksiData?.NomorNota}\nKembalian: Rp {result.Kembalian:N0}",
+                        "Sukses Transaksi"
+                    );
+
+                    ResetKeranjang();
+                }
+                else
+                {
+                    _dialogService.ShowError(result.Message, "Gagal Transaksi");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _dialogService.ShowError(result.Message, "Gagal Transaksi");
+                _dialogService.ShowError($"Terjadi kesalahan sistem: {ex.Message}", "Error Bayar");
             }
         }
 

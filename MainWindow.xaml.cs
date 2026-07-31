@@ -14,18 +14,23 @@ namespace KasirKu
         {
             InitializeComponent();
 
-            // Hubungkan DataContext LoginViewModel dan pasang handler ClockIn
-            if (ViewLogin.DataContext is LoginViewModel loginVm)
-            {
-                loginVm.LoginBerhasilEvent += LoginVm_LoginBerhasilEvent;
+            // 1. Ambil LoginViewModel dari DI Container & assign ke ViewLogin
+            var loginVm = App.ServiceProvider.GetRequiredService<LoginViewModel>();
+            ViewLogin.DataContext = loginVm;
 
-                // Sambungkan delegate ClockInHandler ke View ClockInWindow
-                loginVm.RequestClockInHandler = (kasir) =>
+            // 2. Hubungkan event Login
+            loginVm.LoginBerhasilEvent += LoginVm_LoginBerhasilEvent;
+
+            // 3. Sambungkan delegate ClockInHandler ke View ClockInWindow
+            loginVm.RequestClockInHandler = (kasir) =>
+            {
+                var dialogService = App.ServiceProvider.GetRequiredService<IDialogService>();
+                var clockInWin = new ClockInWindow(kasir, dialogService)
                 {
-                    var clockInWin = new ClockInWindow(kasir);
-                    return clockInWin.ShowDialog();
+                    Owner = this
                 };
-            }
+                return clockInWin.ShowDialog();
+            };
         }
 
         private void LoginVm_LoginBerhasilEvent(object? sender, Kasir user)

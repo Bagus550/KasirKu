@@ -8,10 +8,6 @@
              d:DataContext="{d:DesignInstance Type=vm:LaporanViewModel, IsDesignTimeCreatable=False}"
              d:DesignHeight="850" d:DesignWidth="950">
 
-    <UserControl.DataContext>
-        <vm:LaporanViewModel />
-    </UserControl.DataContext>
-
     <!-- ScrollViewer agar tampilan tidak bertumpuk jika resolusi layar terbatas -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="15">

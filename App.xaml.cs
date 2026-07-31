@@ -1,5 +1,7 @@
-﻿using KasirKu.Services;
+﻿using KasirKu.Data; // Pastikan namespace AppDbContext di-import
+using KasirKu.Services;
 using KasirKu.ViewModels;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
@@ -24,27 +26,51 @@ namespace KasirKu
             // 2. Register Global Exception Handlers
             SetupGlobalExceptionHandling();
 
-            // 3. Tampilkan MainWindow
+            // 3. INISIALISASI DATABASE AUTOMATIS (Memastikan tabel AuditLog & tabel lainnya dibuat)
+            InitializeDatabase();
+
+            // 4. Tampilkan MainWindow
             var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
             mainWindow.Show();
         }
 
+        private void InitializeDatabase()
+        {
+            try
+            {
+                using var scope = ServiceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                // Membuat file database dan seluruh tabel (termasuk AuditLog) jika belum ada
+                db.Database.EnsureCreated();
+            }
+            catch (Exception ex)
+            {
+                // Catat ke logger jika terjadi kegagalan koneksi database saat startup
+                var logger = ServiceProvider.GetService<ILoggerService>();
+                logger?.LogError(ex, "Database Initialization");
+            }
+        }
+
         private void ConfigureServices(IServiceCollection services)
         {
-            // Core Services
-            services.AddSingleton<ILoggerService, LoggerService>();
-            services.AddTransient<LogViewModel>();
-            services.AddSingleton<IDialogService, DialogService>();
-            services.AddSingleton<IPrinterService, PrinterService>();
-            services.AddSingleton<ITransactionService, TransactionService>();
-            services.AddSingleton<IProductService, ProductService>();
+            services.AddDbContextFactory<AppDbContext>(options =>
+                options.UseSqlite("Data Source=kasirku.db"));
 
-            // ViewModels
+            services.AddSingleton<ILoggerService, LoggerService>();
+
+            services.AddSingleton<IPrinterService, NullPrinterService>();
+
+            services.AddSingleton<IDialogService, DialogService>();
+            services.AddTransient<ITransactionService, TransactionService>();
+            services.AddTransient<IProductService, ProductService>();
+
+            services.AddTransient<LogViewModel>();
             services.AddTransient<LoginViewModel>();
             services.AddTransient<KasirViewModel>();
             services.AddTransient<ProdukViewModel>();
+            services.AddTransient<AuditLogViewModel>();
 
-            // Views
             services.AddSingleton<MainWindow>();
         }
 

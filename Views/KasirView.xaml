@@ -8,10 +8,6 @@
              d:DataContext="{d:DesignInstance Type=vm:KasirViewModel, IsDesignTimeCreatable=False}"
              d:DesignHeight="600" d:DesignWidth="900">
 
-    <UserControl.DataContext>
-        <vm:KasirViewModel />
-    </UserControl.DataContext>
-
     <Grid Margin="15">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*"/>

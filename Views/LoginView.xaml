@@ -8,10 +8,6 @@
              d:DataContext="{d:DesignInstance Type=vm:LoginViewModel, IsDesignTimeCreatable=False}"
              d:DesignHeight="500" d:DesignWidth="400">
 
-    <UserControl.DataContext>
-        <vm:LoginViewModel />
-    </UserControl.DataContext>
-
     <Grid Background="#F8F9FA">
         <Border Width="320" Height="360" Background="White" BorderBrush="#DEE2E6" BorderThickness="1" CornerRadius="8" Padding="25">
             <StackPanel VerticalAlignment="Center">
