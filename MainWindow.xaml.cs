@@ -1,5 +1,7 @@
 ﻿using KasirKu.Models;
 using KasirKu.ViewModels;
+using Microsoft.Extensions.DependencyInjection; // Tambahkan ini
+using System;
 using System.Windows;
 
 namespace KasirKu
@@ -28,6 +30,10 @@ namespace KasirKu
             // Atur Hak Akses & Tab Default Berdasarkan Role
             if (user.Role.Equals("Kasir", StringComparison.OrdinalIgnoreCase))
             {
+                // INI KUNCI SIKAT ERROR-NYA:
+                // Inject KasirViewModel yang lengkap dengan Services ke ViewKasir
+                ViewKasir.DataContext = App.ServiceProvider.GetRequiredService<KasirViewModel>();
+
                 // Role Kasir: Hanya tampilkan Tab Kasir
                 TabKasir.Visibility = Visibility.Visible;
                 TabLaporan.Visibility = Visibility.Collapsed;
@@ -38,7 +44,7 @@ namespace KasirKu
             }
             else
             {
-                // Role Admin: Hanya tampilkan Tab Laporan & Data Produk (Sembunyikan Tab Kasir)
+                // Role Admin: Hanya tampilkan Tab Laporan & Data Produk
                 TabKasir.Visibility = Visibility.Collapsed;
                 TabLaporan.Visibility = Visibility.Visible;
                 TabProduk.Visibility = Visibility.Visible;
@@ -59,7 +65,6 @@ namespace KasirKu
                 var clockOutWin = new Views.ClockOutWindow(currentSession);
                 bool? result = clockOutWin.ShowDialog();
 
-                // Jika kasir membatalkan popup clock-out, batalkan proses logout
                 if (result != true)
                 {
                     return;

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using KasirKu.Data;
@@ -21,14 +20,13 @@ namespace KasirKu.Services
         {
             if (string.IsNullOrWhiteSpace(keyword)) return null;
 
-            string cleanKeyword = keyword.Trim().ToLower();
+            string cleanKeyword = keyword.Trim();
 
-            // Query asinkron ke SQLite via EF Core
             return await _context.Produk
-                .AsNoTracking() // AsNoTracking dipakai agar query lebih cepat karena hanya membaca data
+                .AsNoTracking()
                 .FirstOrDefaultAsync(p =>
-                    p.SKU.ToLower() == cleanKeyword ||
-                    p.Nama.ToLower().Contains(cleanKeyword));
+                    EF.Functions.Like(p.SKU, cleanKeyword) ||
+                    EF.Functions.Like(p.Nama, $"%{cleanKeyword}%"));
         }
 
         public async Task<List<Produk>> GetAllProductsAsync()

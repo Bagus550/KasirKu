@@ -108,42 +108,55 @@ namespace KasirKu.ViewModels
         {
             if (string.IsNullOrWhiteSpace(InputBarcode)) return;
 
-            var produk = await _productService.GetProductBySkuOrNameAsync(InputBarcode);
-
-            if (produk == null)
+            if (_productService == null)
             {
-                MessageBox.Show($"Produk dengan SKU/Nama '{InputBarcode}' tidak ditemukan!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
-                InputBarcode = string.Empty;
+                MessageBox.Show("ProductService belum terinisialisasi / ter-inject dengan benar!", "Error System", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            if (produk.Stok <= 0)
+            try
             {
-                MessageBox.Show($"Stok produk '{produk.Nama}' habis!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
-                InputBarcode = string.Empty;
-                return;
-            }
+                var produk = await _productService.GetProductBySkuOrNameAsync(InputBarcode);
 
-            var itemInCart = Keranjang.FirstOrDefault(c => c.Produk.Id == produk.Id);
-            if (itemInCart != null)
-            {
-                if (itemInCart.Jumlah + 1 > produk.Stok)
+                if (produk == null)
                 {
-                    MessageBox.Show($"Stok '{produk.Nama}' tidak mencukupi! Sisa stok: {produk.Stok}", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show($"Produk dengan SKU/Nama '{InputBarcode}' tidak ditemukan!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
                     InputBarcode = string.Empty;
                     return;
                 }
-                itemInCart.Jumlah++;
-            }
-            else
-            {
-                var newItem = new CartItem(produk, 1);
-                newItem.PropertyChanged += (s, e) => HitungTotal();
-                Keranjang.Add(newItem);
-            }
 
-            InputBarcode = string.Empty;
-            HitungTotal();
+                if (produk.Stok <= 0)
+                {
+                    MessageBox.Show($"Stok produk '{produk.Nama}' habis!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    InputBarcode = string.Empty;
+                    return;
+                }
+
+                var itemInCart = Keranjang.FirstOrDefault(c => c.Produk != null && c.Produk.Id == produk.Id);
+                if (itemInCart != null)
+                {
+                    if (itemInCart.Jumlah + 1 > produk.Stok)
+                    {
+                        MessageBox.Show($"Stok '{produk.Nama}' tidak mencukupi! Sisa stok: {produk.Stok}", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        InputBarcode = string.Empty;
+                        return;
+                    }
+                    itemInCart.Jumlah++;
+                }
+                else
+                {
+                    var newItem = new CartItem(produk, 1);
+                    newItem.PropertyChanged += (s, e) => HitungTotal();
+                    Keranjang.Add(newItem);
+                }
+
+                InputBarcode = string.Empty;
+                HitungTotal();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Terjadi kesalahan: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         // Command: Hapus Item dari Keranjang
