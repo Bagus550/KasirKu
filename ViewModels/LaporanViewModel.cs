@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using KasirKu.Data;
 using KasirKu.Models;
+using KasirKu.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Win32;
 using System;
@@ -9,7 +10,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Windows;
 
 namespace KasirKu.ViewModels
 {
@@ -21,6 +21,8 @@ namespace KasirKu.ViewModels
 
     public partial class LaporanViewModel : ObservableObject
     {
+        private readonly IDialogService _dialogService;
+
         // Filter Tanggal
         [ObservableProperty]
         private DateTime _tanggalAwal = DateTime.Today;
@@ -52,37 +54,46 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private ObservableCollection<Produk> _stokKritis = new();
 
-        public LaporanViewModel()
+        // Constructor Utama: Menerima IDialogService dari DI Container
+        public LaporanViewModel(IDialogService dialogService)
         {
+            _dialogService = dialogService;
             MuatLaporan();
         }
 
         [RelayCommand]
         public void MuatLaporan()
         {
-            using var db = new AppDbContext();
+            try
+            {
+                using var db = new AppDbContext();
 
-            // Atur rentang waktu dari jam 00:00:00 tanggal awal sampai 23:59:59 tanggal akhir
-            DateTime tglMulai = TanggalAwal.Date;
-            DateTime tglSelesai = TanggalAkhir.Date.AddDays(1).AddTicks(-1);
+                // Atur rentang waktu dari jam 00:00:00 tanggal awal sampai 23:59:59 tanggal akhir
+                DateTime tglMulai = TanggalAwal.Date;
+                DateTime tglSelesai = TanggalAkhir.Date.AddDays(1).AddTicks(-1);
 
-            var query = db.Transaksi
-                .Include(t => t.DetailTransaksi)
-                .Where(t => t.Tanggal >= tglMulai && t.Tanggal <= tglSelesai)
-                .OrderByDescending(t => t.Tanggal)
-                .ToList();
+                var query = db.Transaksi
+                    .Include(t => t.DetailTransaksi)
+                    .Where(t => t.Tanggal >= tglMulai && t.Tanggal <= tglSelesai)
+                    .OrderByDescending(t => t.Tanggal)
+                    .ToList();
 
-            DaftarTransaksi = new ObservableCollection<Transaksi>(query);
+                DaftarTransaksi = new ObservableCollection<Transaksi>(query);
 
-            // Hitung Ringkasan Data
-            TotalOmzet = query.Sum(t => t.TotalHarga);
-            TotalJumlahTransaksi = query.Count;
-            TotalItemTerjual = query.SelectMany(t => t.DetailTransaksi).Sum(d => d.Jumlah);
+                // Hitung Ringkasan Data
+                TotalOmzet = query.Sum(t => t.TotalHarga);
+                TotalJumlahTransaksi = query.Count;
+                TotalItemTerjual = query.SelectMany(t => t.DetailTransaksi).Sum(d => d.Jumlah);
 
-            // Reset transaksi terpilih
-            TransaksiTerpilih = null;
+                // Reset transaksi terpilih
+                TransaksiTerpilih = null;
 
-            MuatWidgetLaporan(db, tglMulai, tglSelesai);
+                MuatWidgetLaporan(db, tglMulai, tglSelesai);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"Gagal memuat laporan: {ex.Message}");
+            }
         }
 
         private void MuatWidgetLaporan(AppDbContext db, DateTime tglMulai, DateTime tglSelesai)
@@ -135,7 +146,7 @@ namespace KasirKu.ViewModels
         {
             if (DaftarTransaksi == null || DaftarTransaksi.Count == 0)
             {
-                MessageBox.Show("Tidak ada data transaksi untuk diekspor!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Tidak ada data transaksi untuk diekspor!", "Peringatan");
                 return;
             }
 
@@ -150,10 +161,10 @@ namespace KasirKu.ViewModels
                 try
                 {
                     var sb = new StringBuilder();
-                    // Header Kolom CSV (Ditambahkan kolom Kasir)
+                    // Header Kolom CSV
                     sb.AppendLine("Nomor Nota;Tanggal;Kasir;Total Belanja;Total Bayar;Kembalian");
 
-                    // Isi Baris Transaksi (Ditambahkan t.NamaKasir)
+                    // Isi Baris Transaksi
                     foreach (var t in DaftarTransaksi)
                     {
                         sb.AppendLine($"{t.NomorNota};{t.Tanggal:dd/MM/yyyy HH:mm};{t.NamaKasir};{t.TotalHarga};{t.TotalBayar};{t.Kembalian}");
@@ -162,11 +173,11 @@ namespace KasirKu.ViewModels
                     // Tulis ke file menggunakan encoding UTF8 dengan BOM agar tanda pemisah terbaca rapi di Microsoft Excel
                     File.WriteAllText(saveFileDialog.FileName, sb.ToString(), Encoding.UTF8);
 
-                    MessageBox.Show("Laporan berhasil diekspor ke file CSV!", "Sukses Export", MessageBoxButton.OK, MessageBoxImage.Information);
+                    _dialogService.ShowInfo("Laporan berhasil diekspor ke file CSV!", "Sukses Export");
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Gagal mengekspor data: {ex.Message}", "Error Export", MessageBoxButton.OK, MessageBoxImage.Error);
+                    _dialogService.ShowError($"Gagal mengekspor data: {ex.Message}", "Error Export");
                 }
             }
         }
@@ -180,7 +191,7 @@ namespace KasirKu.ViewModels
 
                 if (!File.Exists(sourceDb))
                 {
-                    MessageBox.Show("File database tidak ditemukan!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    _dialogService.ShowError("File database tidak ditemukan!", "Error");
                     return;
                 }
 
@@ -195,12 +206,12 @@ namespace KasirKu.ViewModels
                     // Copy file database fisik ke direktori tujuan
                     File.Copy(sourceDb, saveFileDialog.FileName, overwrite: true);
 
-                    MessageBox.Show("Backup database berhasil disimpan!", "Sukses Backup", MessageBoxButton.OK, MessageBoxImage.Information);
+                    _dialogService.ShowInfo("Backup database berhasil disimpan!", "Sukses Backup");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Gagal membuat backup database: {ex.Message}", "Error Backup", MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError($"Gagal membuat backup database: {ex.Message}", "Error Backup");
             }
         }
     }

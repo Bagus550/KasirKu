@@ -36,16 +36,16 @@
 
                 <!-- Tab 2: Laporan Penjualan -->
                 <TabItem x:Name="TabLaporan" Header=" 📊 Laporan Penjualan " FontSize="14" FontWeight="Bold">
-                    <views:LaporanView />
+                    <views:LaporanView x:Name="ViewLaporan" />
                 </TabItem>
 
                 <!-- Tab 3: Manajemen Produk -->
                 <TabItem x:Name="TabProduk" Header=" 📦 Data Produk " FontSize="14" FontWeight="Bold">
-                    <views:ProdukView />
+                    <views:ProdukView x:Name="ViewProduk"/>
                 </TabItem>
 
                 <TabItem x:Name="TabAuditLog" Header="📋 Audit Log &amp; Sesi Kasir">
-                    <views:AuditLogView />
+                    <views:AuditLogView x:Name="ViewAuditLog" />
                 </TabItem>
 
             </TabControl>

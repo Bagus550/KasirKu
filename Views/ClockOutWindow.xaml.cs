@@ -1,4 +1,5 @@
 ﻿using KasirKu.Models;
+using KasirKu.Services;
 using KasirKu.ViewModels;
 using System.Windows;
 
@@ -8,10 +9,12 @@ namespace KasirKu.Views
     {
         public bool IsClockOutSuccess { get; private set; } = false;
 
-        public ClockOutWindow(KasirSession session)
+        public ClockOutWindow(KasirSession session, IDialogService dialogService)
         {
             InitializeComponent();
-            DataContext = new ClockOutViewModel(session, () =>
+
+            // Mengirim 3 parameter sesuai signature ClockOutViewModel
+            DataContext = new ClockOutViewModel(dialogService, session, () =>
             {
                 IsClockOutSuccess = true;
                 DialogResult = true;

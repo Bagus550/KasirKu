@@ -5,12 +5,15 @@ using KasirKu.Models;
 using KasirKu.Services;
 using System;
 using System.Linq;
-using System.Windows;
 
 namespace KasirKu.ViewModels
 {
     public partial class ClockOutViewModel : ObservableObject
     {
+        private readonly IDialogService _dialogService;
+        private readonly KasirSession _sessionAktif;
+        private readonly Action _onSuccess;
+
         [ObservableProperty]
         private string _namaKasir = string.Empty;
 
@@ -35,11 +38,9 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private string _catatan = string.Empty;
 
-        private readonly KasirSession _sessionAktif;
-        private readonly Action _onSuccess;
-
-        public ClockOutViewModel(KasirSession session, Action onSuccess)
+        public ClockOutViewModel(IDialogService dialogService, KasirSession session, Action onSuccess)
         {
+            _dialogService = dialogService;
             _sessionAktif = session;
             _onSuccess = onSuccess;
 
@@ -49,20 +50,27 @@ namespace KasirKu.ViewModels
 
         private void HitungRingkasanShift()
         {
-            using var db = new AppDbContext();
+            try
+            {
+                using var db = new AppDbContext();
 
-            // Load data shift dari DB
-            var shift = db.Shift.Find(_sessionAktif.ShiftId);
-            NamaShift = shift?.NamaShift ?? "-";
-            ModalAwal = _sessionAktif.ModalAwal;
+                // Load data shift dari DB
+                var shift = db.Shift.Find(_sessionAktif.ShiftId);
+                NamaShift = shift?.NamaShift ?? "-";
+                ModalAwal = _sessionAktif.ModalAwal;
 
-            // Menggunakan DbSet 'Transaksi' sesuai schema KasirKu
-            TotalOmzetTunai = db.Transaksi
-                .Where(t => t.Tanggal >= _sessionAktif.WaktuLogin)
-                .Sum(t => (decimal?)t.TotalHarga) ?? 0;
+                // Menggunakan DbSet 'Transaksi' sesuai schema KasirKu
+                TotalOmzetTunai = db.Transaksi
+                    .Where(t => t.Tanggal >= _sessionAktif.WaktuLogin)
+                    .Sum(t => (decimal?)t.TotalHarga) ?? 0;
 
-            TotalEkspektasi = ModalAwal + TotalOmzetTunai;
-            HitungSelisih();
+                TotalEkspektasi = ModalAwal + TotalOmzetTunai;
+                HitungSelisih();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"Gagal menghitung ringkasan shift: {ex.Message}");
+            }
         }
 
         partial void OnTotalAktifFisikTextChanged(string value)
@@ -87,36 +95,48 @@ namespace KasirKu.ViewModels
         {
             if (!decimal.TryParse(TotalAktifFisikText, out decimal totalFisik) || totalFisik < 0)
             {
-                MessageBox.Show("Nominal uang fisik di laci tidak valid!", "Peringatan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Nominal uang fisik di laci tidak valid!", "Peringatan");
                 return;
             }
 
-            using var db = new AppDbContext();
-            var sessionDb = db.KasirSession.Find(_sessionAktif.Id);
+            // Minta konfirmasi sebelum mengakhiri shift
+            bool confirm = _dialogService.ShowConfirmation("Apakah Anda yakin ingin menyelesaikan shift dan melakukan Clock-Out?", "Konfirmasi Clock-Out");
+            if (!confirm) return;
 
-            if (sessionDb != null)
+            try
             {
-                // Update ke properti KasirSession yang sesuai
-                sessionDb.WaktuLogout = DateTime.Now;
-                sessionDb.TotalTunaiSistem = TotalOmzetTunai;
-                sessionDb.TotalTunaiFisik = totalFisik;
-                sessionDb.SelisihKas = Selisih;
-                sessionDb.CatatanSelisih = Catatan;
-                sessionDb.IsClosed = true;
+                using var db = new AppDbContext();
+                var sessionDb = db.KasirSession.Find(_sessionAktif.Id);
 
-                // Tambahkan Audit Log
-                db.AuditLog.Add(new AuditLog
+                if (sessionDb != null)
                 {
-                    KasirId = sessionDb.KasirId,
-                    Waktu = DateTime.Now,
-                    JenisAksi = "CLOCK_OUT",
-                    Keterangan = $"Selesai Shift ({NamaShift}). Modal Awal: Rp {ModalAwal:N0}, Omzet Tunai: Rp {TotalOmzetTunai:N0}, Uang Laci: Rp {totalFisik:N0}, Selisih: Rp {Selisih:N0}"
-                });
+                    // Update ke properti KasirSession yang sesuai
+                    sessionDb.WaktuLogout = DateTime.Now;
+                    sessionDb.TotalTunaiSistem = TotalOmzetTunai;
+                    sessionDb.TotalTunaiFisik = totalFisik;
+                    sessionDb.SelisihKas = Selisih;
+                    sessionDb.CatatanSelisih = Catatan;
+                    sessionDb.IsClosed = true;
 
-                db.SaveChanges();
+                    // Tambahkan Audit Log
+                    db.AuditLog.Add(new AuditLog
+                    {
+                        KasirId = sessionDb.KasirId,
+                        Waktu = DateTime.Now,
+                        JenisAksi = "CLOCK_OUT",
+                        Keterangan = $"Selesai Shift ({NamaShift}). Modal Awal: Rp {ModalAwal:N0}, Omzet Tunai: Rp {TotalOmzetTunai:N0}, Uang Laci: Rp {totalFisik:N0}, Selisih: Rp {Selisih:N0}"
+                    });
+
+                    db.SaveChanges();
+                }
+
+                _dialogService.ShowInfo("Berhasil menyelesaikan shift. Terima kasih!", "Informasi");
+                _onSuccess?.Invoke();
             }
-
-            _onSuccess?.Invoke();
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"Gagal mengakhiri shift: {ex.Message}");
+            }
         }
     }
 }

@@ -3,16 +3,14 @@ using CommunityToolkit.Mvvm.Input;
 using KasirKu.Data;
 using KasirKu.Models;
 using KasirKu.Services;
-using KasirKu.Views;
 using System;
 using System.Linq;
-using System.Windows;
 
 namespace KasirKu.ViewModels
 {
     public partial class LoginViewModel : ObservableObject
     {
-        private readonly IDialogService? _dialogService;
+        private readonly IDialogService _dialogService;
 
         [ObservableProperty]
         private string _username = string.Empty;
@@ -23,18 +21,16 @@ namespace KasirKu.ViewModels
         // Menyimpan data kasir/user yang sedang login
         public static Kasir? UserLoginAktif { get; private set; }
 
-        // Event untuk memberitahu MainWindow jika login berhasil
+        // Event untuk memberitahu MainWindow/App Controller jika login berhasil
         public event EventHandler<Kasir>? LoginBerhasilEvent;
 
-        // Constructor Injection
+        // Action callback untuk membuka window ClockIn jika kasir biasa login (decoupling dari View)
+        public Func<Kasir, bool?>? RequestClockInHandler { get; set; }
+
+        // Constructor Utama: Menerima IDialogService dari DI Container
         public LoginViewModel(IDialogService dialogService)
         {
             _dialogService = dialogService;
-        }
-
-        // Parameterless constructor untuk XAML Designer / Fallback
-        public LoginViewModel()
-        {
         }
 
         [RelayCommand]
@@ -42,66 +38,72 @@ namespace KasirKu.ViewModels
         {
             if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
             {
-                ShowMessage("Username dan Password wajib diisi!", "Peringatan", MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Username dan Password wajib diisi!", "Peringatan");
                 return;
             }
 
-            using var db = new AppDbContext();
-
-            // 1. Cari user hanya berdasarkan Username
-            var user = db.Kasir.FirstOrDefault(k => k.Username.ToLower() == Username.Trim().ToLower());
-
-            // 2. Verifikasi Password dengan PasswordHasherHelper
-            if (user == null || !PasswordHasherHelper.VerifyPassword(user, user.PasswordHash, Password))
+            try
             {
-                ShowMessage("Username atau Password salah!", "Login Gagal", MessageBoxImage.Error);
-                return;
-            }
+                using var db = new AppDbContext();
 
-            UserLoginAktif = user;
-            ShowMessage($"Selamat datang, {user.Nama} ({user.Role})!", "Login Berhasil", MessageBoxImage.Information);
+                // 1. Cari user hanya berdasarkan Username
+                var user = db.Kasir.FirstOrDefault(k => k.Username.ToLower() == Username.Trim().ToLower());
 
-            if (user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
-            {
-                // JIKA ADMIN: Bypass ClockIn & Buat Session Dummy Khusus Admin
-                var adminSession = new KasirSession
+                // 2. Verifikasi Password dengan PasswordHasherHelper
+                if (user == null || !PasswordHasherHelper.VerifyPassword(user, user.PasswordHash, Password))
                 {
-                    KasirId = user.Id,
-                    ShiftId = null,
-                    WaktuLogin = DateTime.Now,
-                    ModalAwal = 0,
-                    IsClosed = false
-                };
+                    _dialogService.ShowError("Username atau Password salah!", "Login Gagal");
+                    return;
+                }
 
-                db.KasirSession.Add(adminSession);
+                UserLoginAktif = user;
+                _dialogService.ShowInfo($"Selamat datang, {user.Nama} ({user.Role})!", "Login Berhasil");
 
-                db.AuditLog.Add(new AuditLog
+                if (user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
                 {
-                    KasirId = user.Id,
-                    Waktu = DateTime.Now,
-                    JenisAksi = "LOGIN_ADMIN",
-                    Keterangan = "Admin Login Sistem"
-                });
+                    // JIKA ADMIN: Bypass ClockIn & Buat Session Dummy Khusus Admin
+                    var adminSession = new KasirSession
+                    {
+                        KasirId = user.Id,
+                        ShiftId = null,
+                        WaktuLogin = DateTime.Now,
+                        ModalAwal = 0,
+                        IsClosed = false
+                    };
 
-                db.SaveChanges();
+                    db.KasirSession.Add(adminSession);
 
-                SessionManager.SetSession(user, adminSession);
-                LoginBerhasilEvent?.Invoke(this, user);
-            }
-            else
-            {
-                // JIKA KASIR: Wajib Clock-In (Pilih Shift & Input Modal Awal)
-                var clockInWin = new ClockInWindow(user);
-                bool? isClockInSuccess = clockInWin.ShowDialog();
+                    db.AuditLog.Add(new AuditLog
+                    {
+                        KasirId = user.Id,
+                        Waktu = DateTime.Now,
+                        JenisAksi = "LOGIN_ADMIN",
+                        Keterangan = "Admin Login Sistem"
+                    });
 
-                if (isClockInSuccess == true)
-                {
+                    db.SaveChanges();
+
+                    SessionManager.SetSession(user, adminSession);
                     LoginBerhasilEvent?.Invoke(this, user);
                 }
                 else
                 {
-                    UserLoginAktif = null;
+                    // JIKA KASIR: Wajib Clock-In (Pilih Shift & Input Modal Awal)
+                    bool isClockInSuccess = RequestClockInHandler?.Invoke(user) ?? false;
+
+                    if (isClockInSuccess)
+                    {
+                        LoginBerhasilEvent?.Invoke(this, user);
+                    }
+                    else
+                    {
+                        UserLoginAktif = null;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"Terjadi kesalahan saat login: {ex.Message}", "Error Database");
             }
         }
 
@@ -109,30 +111,6 @@ namespace KasirKu.ViewModels
         {
             Username = string.Empty;
             Password = string.Empty;
-        }
-
-        // Helper untuk penanganan pesan yang fleksibel (IDialogService atau Fallback MessageBox)
-        private void ShowMessage(string message, string title, MessageBoxImage icon)
-        {
-            if (_dialogService != null)
-            {
-                switch (icon)
-                {
-                    case MessageBoxImage.Warning:
-                        _dialogService.ShowWarning(message, title);
-                        break;
-                    case MessageBoxImage.Error:
-                        _dialogService.ShowError(message, title);
-                        break;
-                    default:
-                        _dialogService.ShowInfo(message, title);
-                        break;
-                }
-            }
-            else
-            {
-                MessageBox.Show(message, title, MessageBoxButton.OK, icon);
-            }
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿using KasirKu.Models;
+using KasirKu.Services;
 using KasirKu.ViewModels;
-using Microsoft.Extensions.DependencyInjection; // Tambahkan ini
+using KasirKu.Views;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Windows;
 
@@ -12,10 +14,17 @@ namespace KasirKu
         {
             InitializeComponent();
 
-            // Hubungkan event saat login berhasil
+            // Hubungkan DataContext LoginViewModel dan pasang handler ClockIn
             if (ViewLogin.DataContext is LoginViewModel loginVm)
             {
                 loginVm.LoginBerhasilEvent += LoginVm_LoginBerhasilEvent;
+
+                // Sambungkan delegate ClockInHandler ke View ClockInWindow
+                loginVm.RequestClockInHandler = (kasir) =>
+                {
+                    var clockInWin = new ClockInWindow(kasir);
+                    return clockInWin.ShowDialog();
+                };
             }
         }
 
@@ -30,7 +39,6 @@ namespace KasirKu
             // Atur Hak Akses & Tab Default Berdasarkan Role
             if (user.Role.Equals("Kasir", StringComparison.OrdinalIgnoreCase))
             {
-                // INI KUNCI SIKAT ERROR-NYA:
                 // Inject KasirViewModel yang lengkap dengan Services ke ViewKasir
                 ViewKasir.DataContext = App.ServiceProvider.GetRequiredService<KasirViewModel>();
 
@@ -44,7 +52,11 @@ namespace KasirKu
             }
             else
             {
-                // Role Admin: Hanya tampilkan Tab Laporan & Data Produk
+                // Inject ViewModel khusus Admin
+                ViewProduk.DataContext = App.ServiceProvider.GetRequiredService<ProdukViewModel>();
+                ViewAuditLog.DataContext = App.ServiceProvider.GetRequiredService<LogViewModel>();
+
+                // Role Admin: Tampilkan Tab Laporan, Produk, & Audit Log
                 TabKasir.Visibility = Visibility.Collapsed;
                 TabLaporan.Visibility = Visibility.Visible;
                 TabProduk.Visibility = Visibility.Visible;
@@ -56,18 +68,26 @@ namespace KasirKu
 
         private void BtnLogout_Click(object sender, RoutedEventArgs e)
         {
-            var currentKasir = Services.SessionManager.CurrentKasir;
-            var currentSession = Services.SessionManager.CurrentSession;
+            var currentKasir = SessionManager.CurrentKasir;
+            var currentSession = SessionManager.CurrentSession;
 
             // A. JIKA USER ADALAH KASIR, TAMPILKAN POPUP CLOCK-OUT
             if (currentKasir != null && currentKasir.Role?.Equals("Kasir", StringComparison.OrdinalIgnoreCase) == true && currentSession != null)
             {
-                var clockOutWin = new Views.ClockOutWindow(currentSession);
+                // Ambil IDialogService dari Dependency Injection Container
+                var dialogService = App.ServiceProvider.GetRequiredService<IDialogService>();
+
+                // Lewatkan dialogService sebagai parameter kedua ke ClockOutWindow
+                var clockOutWin = new ClockOutWindow(currentSession, dialogService)
+                {
+                    Owner = this // Atur Owner agar posisi dialog berada di atas MainWindow
+                };
+
                 bool? result = clockOutWin.ShowDialog();
 
                 if (result != true)
                 {
-                    return;
+                    return; // Jika user membatalkan Clock-Out, hentikan proses Logout
                 }
             }
             // B. JIKA USER ADALAH ADMIN, UPDATE LOGOUT DIRECTLY
@@ -93,7 +113,7 @@ namespace KasirKu
             }
 
             // CLEAR SESSION GLOBAL & RESET TAMPILAN
-            Services.SessionManager.ClearSession();
+            SessionManager.ClearSession();
 
             if (ViewLogin.DataContext is LoginViewModel loginVm)
             {

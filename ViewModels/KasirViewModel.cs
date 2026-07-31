@@ -24,6 +24,7 @@ namespace KasirKu.ViewModels
         private readonly ITransactionService _transactionService;
         private readonly IProductService _productService;
         private readonly IDialogService _dialogService;
+        private readonly IPrinterService _printerService;
 
         // Properties UI menggunakan CommunityToolkit Source Generator
         [ObservableProperty]
@@ -48,11 +49,13 @@ namespace KasirKu.ViewModels
         public KasirViewModel(
             ITransactionService transactionService,
             IProductService productService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            IPrinterService printerService)
         {
             _transactionService = transactionService;
             _productService = productService;
             _dialogService = dialogService;
+            _printerService = printerService;
 
             HitungTotal();
         }
@@ -67,7 +70,7 @@ namespace KasirKu.ViewModels
         {
             if (Keranjang.Count == 0)
             {
-                _dialogService.ShowWarning("Keranjang belanja masih kosong!");
+                _dialogService.ShowWarning("Keranjang belanja masih kosong!", "Peringatan");
                 return;
             }
 
@@ -89,7 +92,7 @@ namespace KasirKu.ViewModels
 
             if (Keranjang.Count > 0)
             {
-                bool konfirmasi = _dialogService.ShowConfirmation("Keranjang saat ini tidak kosong. Apakah ingin menggabungkan item?");
+                bool konfirmasi = _dialogService.ShowConfirmation("Keranjang saat ini tidak kosong. Apakah ingin menggabungkan item?", "Konfirmasi Resume");
                 if (!konfirmasi) return;
             }
 
@@ -105,7 +108,7 @@ namespace KasirKu.ViewModels
 
         // Command: Scan / Tambah Barang dari Input Barcode
         [RelayCommand]
-        public async Task TambahBarang()
+        public async Task TambahBarangAsync()
         {
             if (string.IsNullOrWhiteSpace(InputBarcode)) return;
 
@@ -115,14 +118,14 @@ namespace KasirKu.ViewModels
 
                 if (produk == null)
                 {
-                    _dialogService.ShowWarning($"Produk dengan SKU/Nama '{InputBarcode}' tidak ditemukan!");
+                    _dialogService.ShowWarning($"Produk dengan SKU/Nama '{InputBarcode}' tidak ditemukan!", "Tidak Ditemukan");
                     InputBarcode = string.Empty;
                     return;
                 }
 
                 if (produk.Stok <= 0)
                 {
-                    _dialogService.ShowWarning($"Stok produk '{produk.Nama}' habis!");
+                    _dialogService.ShowWarning($"Stok produk '{produk.Nama}' habis!", "Stok Habis");
                     InputBarcode = string.Empty;
                     return;
                 }
@@ -132,7 +135,7 @@ namespace KasirKu.ViewModels
                 {
                     if (itemInCart.Jumlah + 1 > produk.Stok)
                     {
-                        _dialogService.ShowWarning($"Stok '{produk.Nama}' tidak mencukupi! Sisa stok: {produk.Stok}");
+                        _dialogService.ShowWarning($"Stok '{produk.Nama}' tidak mencukupi! Sisa stok: {produk.Stok}", "Stok Terbatas");
                         InputBarcode = string.Empty;
                         return;
                     }
@@ -150,7 +153,7 @@ namespace KasirKu.ViewModels
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"Terjadi kesalahan: {ex.Message}");
+                _dialogService.ShowError($"Terjadi kesalahan: {ex.Message}", "Error Scan");
             }
         }
 
@@ -172,19 +175,19 @@ namespace KasirKu.ViewModels
             ResetKeranjang();
         }
 
-        // Command: Simpan Transaksi & Potong Stok
+        // Command: Simpan Transaksi, Potong Stok & Cetak Struk Async
         [RelayCommand]
-        public async Task ProsesBayar()
+        public async Task ProsesBayarAsync()
         {
             if (Keranjang.Count == 0)
             {
-                _dialogService.ShowWarning("Keranjang belanja masih kosong!");
+                _dialogService.ShowWarning("Keranjang belanja masih kosong!", "Peringatan");
                 return;
             }
 
             if (TotalBayar < TotalHarga)
             {
-                _dialogService.ShowWarning("Uang pembayaran kurang!");
+                _dialogService.ShowWarning("Uang pembayaran kurang!", "Peringatan");
                 return;
             }
 
@@ -197,15 +200,15 @@ namespace KasirKu.ViewModels
 
             if (result.IsSuccess)
             {
-                // Cetak Struk via Service
+                // Cetak Struk secara Async via PrinterService
                 if (result.TransaksiData != null)
                 {
-                    PrinterService.CetakStruk(result.TransaksiData);
+                    await _printerService.CetakStrukAsync(result.TransaksiData);
                 }
 
                 _dialogService.ShowInfo(
                     $"Transaksi Berhasil!\nNota: {result.TransaksiData?.NomorNota}\nKasir: {result.TransaksiData?.NamaKasir}\nKembalian: Rp {result.Kembalian:N0}",
-                    "Sukses"
+                    "Sukses Transaksi"
                 );
 
                 ResetKeranjang();
