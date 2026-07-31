@@ -20,36 +20,35 @@
         <!-- Filter Tanggal -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
             <TextBlock Text="Filter Tanggal:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
-            <DatePicker SelectedDate="{Binding TanggalAwal}" Width="120" Margin="0,0,10,0"/>
+            <DatePicker SelectedDate="{Binding TanggalAwal, Mode=TwoWay}" Width="120" Margin="0,0,10,0"/>
             <TextBlock Text="s/d" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <DatePicker SelectedDate="{Binding TanggalAkhir}" Width="120" Margin="0,0,15,0"/>
-            <Button Content="🔍 Tampilkan Log" Command="{Binding MuatDataAuditCommand}" Padding="10,5" Background="#0D6EFD" Foreground="White" FontWeight="Bold"/>
+            <DatePicker SelectedDate="{Binding TanggalAkhir, Mode=TwoWay}" Width="120" Margin="0,0,15,0"/>
+            <Button Content="🔍 Tampilkan Log" Command="{Binding MuatLogCommand}" Padding="10,5" Background="#0D6EFD" Foreground="White" FontWeight="Bold"/>
         </StackPanel>
 
         <!-- Tab Content -->
         <TabControl Grid.Row="1">
-            <!-- TAB 1: Rekap Sesi & Shift Kasir -->
-            <TabItem Header="📋 Rekap Sesi &amp; Shift Kasir">
-                <!-- Pastikan TIDAK ADA atribut SelectionChanged="DataGrid_SelectionChanged" di sini -->
-                <DataGrid ItemsSource="{Binding DaftarSesiKasir}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10">
+            <!-- TAB 1: Sesi & Aktivitas Kasir -->
+            <TabItem Header="👤 Sesi &amp; Aktivitas Kasir">
+                <DataGrid ItemsSource="{Binding DaftarSesiKasir}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10" GridLinesVisibility="Horizontal">
                     <DataGrid.Columns>
+                        <DataGridTextColumn Header="Nama Kasir" Binding="{Binding Kasir.Nama, TargetNullValue='-'}" Width="150" FontWeight="SemiBold"/>
+                        <DataGridTextColumn Header="Shift Work" Binding="{Binding Shift.NamaShift, TargetNullValue='Admin (Non-Shift)'}" Width="140"/>
                         <DataGridTextColumn Header="Waktu Login" Binding="{Binding WaktuLogin, StringFormat=\{0:dd/MM/yyyy HH:mm\}}" Width="130"/>
-                        <DataGridTextColumn Header="Waktu Logout" Binding="{Binding WaktuLogout, StringFormat=\{0:dd/MM/yyyy HH:mm\}, TargetNullValue='(Masih Aktif)'}" Width="130"/>
-                        <DataGridTextColumn Header="Nama Kasir" Binding="{Binding Kasir.Nama}" Width="*"/>
-                        <DataGridTextColumn Header="Shift" Binding="{Binding Shift.NamaShift, TargetNullValue='- (Admin)'}" Width="120"/>
-                        <DataGridTextColumn Header="Modal Awal" Binding="{Binding ModalAwal, StringFormat=Rp \{0:N0\}}" Width="110"/>
-                        <DataGridTextColumn Header="Total Omzet" Binding="{Binding TotalTunaiSistem, StringFormat=Rp \{0:N0\}}" Width="110"/>
-                        <DataGridTextColumn Header="Status" Binding="{Binding IsClosed, Converter={StaticResource BoolToStatusConverter}}" Width="90"/>
+                        <DataGridTextColumn Header="Waktu Logout" Binding="{Binding WaktuLogout, StringFormat=\{0:dd/MM/yyyy HH:mm\}, TargetNullValue='🟢 Masih Aktif'}" Width="130"/>
+                        <DataGridTextColumn Header="Modal Awal" Binding="{Binding ModalAwal, StringFormat=Rp {0:N0}}" Width="120"/>
+                        <DataGridTextColumn Header="Total Omzet" Binding="{Binding TotalTunaiSistem, StringFormat=Rp {0:N0}}" Width="120"/>
+                        <DataGridTextColumn Header="Status Sesi" Binding="{Binding IsClosed, Converter={StaticResource BoolToStatusConverter}}" Width="100"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>
 
-            <!-- TAB 2: Audit Trail Aktivitas -->
+            <!-- TAB 2: Audit Trail Aktivitas Sistem (Tetap) -->
             <TabItem Header="🕒 Log Aktivitas Sistem">
-                <DataGrid ItemsSource="{Binding DaftarAuditLog}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10">
+                <DataGrid ItemsSource="{Binding DaftarAuditLog}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10" GridLinesVisibility="Horizontal">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Waktu" Binding="{Binding Waktu, StringFormat=\{0:dd/MM/yyyy HH:mm:ss\}}" Width="140"/>
-                        <DataGridTextColumn Header="Kasir" Binding="{Binding Kasir.Nama}" Width="150"/>
+                        <DataGridTextColumn Header="Pengguna / Kasir" Binding="{Binding Kasir.Nama, TargetNullValue='System'}" Width="150"/>
                         <DataGridTextColumn Header="Aksi" Binding="{Binding JenisAksi}" Width="130" FontWeight="Bold"/>
                         <DataGridTextColumn Header="Keterangan Audit" Binding="{Binding Keterangan}" Width="*"/>
                     </DataGrid.Columns>

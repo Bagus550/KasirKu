@@ -12,7 +12,7 @@ namespace KasirKu.ViewModels
     public partial class LogViewModel : ObservableObject
     {
         private readonly ILoggerService _loggerService;
-        private readonly IDialogService _dialogService;
+        private readonly IDialogService? _dialogService;
 
         [ObservableProperty]
         private ObservableCollection<FileInfo> _daftarLogFile = new();
@@ -23,7 +23,7 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private string _isiLogContent = string.Empty;
 
-        public LogViewModel(ILoggerService loggerService, IDialogService dialogService)
+        public LogViewModel(ILoggerService loggerService, IDialogService? dialogService = null)
         {
             _loggerService = loggerService;
             _dialogService = dialogService;
@@ -35,7 +35,14 @@ namespace KasirKu.ViewModels
         {
             if (value != null)
             {
-                IsiLogContent = _loggerService.ReadLogFile(value.Name);
+                try
+                {
+                    IsiLogContent = _loggerService.ReadLogFile(value.Name);
+                }
+                catch (Exception ex)
+                {
+                    IsiLogContent = $"[Gagal Membaca File Log]: {ex.Message}";
+                }
             }
             else
             {
@@ -46,12 +53,34 @@ namespace KasirKu.ViewModels
         [RelayCommand]
         public void MuatDaftarLog()
         {
-            var files = _loggerService.GetLogFiles();
-            DaftarLogFile = new ObservableCollection<FileInfo>(files);
-
-            if (DaftarLogFile.Any())
+            try
             {
-                SelectedLogFile = DaftarLogFile.First();
+                var previousFileName = SelectedLogFile?.Name;
+
+                var files = _loggerService.GetLogFiles() ?? Enumerable.Empty<FileInfo>();
+                DaftarLogFile = new ObservableCollection<FileInfo>(files);
+
+                if (DaftarLogFile.Any())
+                {
+                    var matchedFile = DaftarLogFile.FirstOrDefault(f => f.Name == previousFileName);
+
+                    // Trigger pembaruan UI
+                    SelectedLogFile = matchedFile ?? DaftarLogFile.First();
+
+                    if (SelectedLogFile != null)
+                    {
+                        IsiLogContent = _loggerService.ReadLogFile(SelectedLogFile.Name);
+                    }
+                }
+                else
+                {
+                    SelectedLogFile = null;
+                    IsiLogContent = "Belum ada file log sistem yang tercatat di folder Logs.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService?.ShowError($"Gagal memuat daftar file log: {ex.Message}", "Error Log");
             }
         }
 
@@ -60,13 +89,13 @@ namespace KasirKu.ViewModels
         {
             if (SelectedLogFile == null || string.IsNullOrWhiteSpace(IsiLogContent))
             {
-                _dialogService.ShowWarning("Pilih file log terlebih dahulu!", "Peringatan");
+                _dialogService?.ShowWarning("Pilih file log terlebih dahulu!", "Peringatan");
                 return;
             }
 
             var saveFileDialog = new SaveFileDialog
             {
-                Filter = "Log File (*.log)|*.log|Text File (*.txt)|*.txt",
+                Filter = "Log File (*.log)|*.log|Text File (*.txt)|*.txt|All Files (*.*)|*.*",
                 FileName = SelectedLogFile.Name,
                 Title = "Ekspor File Log System"
             };
@@ -76,11 +105,11 @@ namespace KasirKu.ViewModels
                 try
                 {
                     File.WriteAllText(saveFileDialog.FileName, IsiLogContent);
-                    _dialogService.ShowInfo($"File log berhasil diekspor ke:\n{saveFileDialog.FileName}", "Ekspor Sukses");
+                    _dialogService?.ShowInfo($"File log berhasil diekspor ke:\n{saveFileDialog.FileName}", "Ekspor Sukses");
                 }
                 catch (Exception ex)
                 {
-                    _dialogService.ShowError($"Gagal mengekspor file log: {ex.Message}", "Error Ekspor");
+                    _dialogService?.ShowError($"Gagal mengekspor file log: {ex.Message}", "Error Ekspor");
                 }
             }
         }

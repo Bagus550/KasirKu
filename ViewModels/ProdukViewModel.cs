@@ -78,11 +78,28 @@ namespace KasirKu.ViewModels
 
                 if (SelectedProduk.Id == 0)
                 {
+                    // TAMBAH PRODUK BARU
                     db.Produk.Add(SelectedProduk);
                 }
                 else
                 {
-                    db.Produk.Update(SelectedProduk);
+                    var produkDb = db.Produk.Find(SelectedProduk.Id);
+
+                    if (produkDb != null)
+                    {
+                        produkDb.SKU = SelectedProduk.SKU;
+                        produkDb.Nama = SelectedProduk.Nama;
+                        produkDb.Kategori = SelectedProduk.Kategori;
+                        produkDb.HargaBeli = SelectedProduk.HargaBeli;
+                        produkDb.HargaJual = SelectedProduk.HargaJual;
+                        produkDb.Stok = SelectedProduk.Stok;
+                        produkDb.StokMinimum = SelectedProduk.StokMinimum;
+                    }
+                    else
+                    {
+                        _dialogService.ShowError("Data produk tidak ditemukan di database!", "Error Simpan");
+                        return;
+                    }
                 }
 
                 db.SaveChanges();
@@ -114,11 +131,17 @@ namespace KasirKu.ViewModels
             try
             {
                 using var db = new AppDbContext();
-                db.Produk.Remove(produk);
-                db.SaveChanges();
 
-                _dialogService.ShowInfo("Produk berhasil dihapus!", "Sukses");
-                MuatDataProduk();
+                // Cari entitas terlebih dahulu sebelum menghapus
+                var produkDb = db.Produk.Find(produk.Id);
+                if (produkDb != null)
+                {
+                    db.Produk.Remove(produkDb);
+                    db.SaveChanges();
+
+                    _dialogService.ShowInfo("Produk berhasil dihapus!", "Sukses");
+                    MuatDataProduk();
+                }
             }
             catch (Exception ex)
             {

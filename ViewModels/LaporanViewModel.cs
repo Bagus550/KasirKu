@@ -6,10 +6,12 @@ using KasirKu.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace KasirKu.ViewModels
 {
@@ -22,6 +24,7 @@ namespace KasirKu.ViewModels
     public partial class LaporanViewModel : ObservableObject
     {
         private readonly IDialogService _dialogService;
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
 
         // Filter Tanggal
         [ObservableProperty]
@@ -54,29 +57,32 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private ObservableCollection<Produk> _stokKritis = new();
 
-        // Constructor Utama: Menerima IDialogService dari DI Container
-        public LaporanViewModel(IDialogService dialogService)
+        public LaporanViewModel(IDialogService dialogService, IDbContextFactory<AppDbContext> contextFactory)
         {
             _dialogService = dialogService;
-            MuatLaporan();
+            _contextFactory = contextFactory;
+
+            _ = MuatLaporanAsync();
         }
 
         [RelayCommand]
-        public void MuatLaporan()
+        public async Task MuatLaporanAsync()
         {
             try
             {
-                using var db = new AppDbContext();
+                using var db = await _contextFactory.CreateDbContextAsync();
 
                 // Atur rentang waktu dari jam 00:00:00 tanggal awal sampai 23:59:59 tanggal akhir
                 DateTime tglMulai = TanggalAwal.Date;
                 DateTime tglSelesai = TanggalAkhir.Date.AddDays(1).AddTicks(-1);
 
-                var query = db.Transaksi
+                // Gunakan AsNoTracking() agar membaca data paling fresh langsung dari disk/WAL SQLite
+                var query = await db.Transaksi
                     .Include(t => t.DetailTransaksi)
                     .Where(t => t.Tanggal >= tglMulai && t.Tanggal <= tglSelesai)
                     .OrderByDescending(t => t.Tanggal)
-                    .ToList();
+                    .AsNoTracking()
+                    .ToListAsync();
 
                 DaftarTransaksi = new ObservableCollection<Transaksi>(query);
 
@@ -88,7 +94,7 @@ namespace KasirKu.ViewModels
                 // Reset transaksi terpilih
                 TransaksiTerpilih = null;
 
-                MuatWidgetLaporan(db, tglMulai, tglSelesai);
+                await MuatWidgetLaporanAsync(db, tglMulai, tglSelesai);
             }
             catch (Exception ex)
             {
@@ -96,10 +102,10 @@ namespace KasirKu.ViewModels
             }
         }
 
-        private void MuatWidgetLaporan(AppDbContext db, DateTime tglMulai, DateTime tglSelesai)
+        private async Task MuatWidgetLaporanAsync(AppDbContext db, DateTime tglMulai, DateTime tglSelesai)
         {
             // 1. Hitung Top 5 Produk Terlaris berdasarkan range tanggal laporan
-            var queryTerlaris = db.DetailTransaksi
+            var queryTerlaris = await db.DetailTransaksi
                 .Where(d => d.Transaksi.Tanggal >= tglMulai && d.Transaksi.Tanggal <= tglSelesai)
                 .GroupBy(d => d.NamaProduk)
                 .Select(g => new ProdukTerlarisModel
@@ -109,36 +115,38 @@ namespace KasirKu.ViewModels
                 })
                 .OrderByDescending(x => x.TotalTerjual)
                 .Take(5)
-                .ToList();
+                .AsNoTracking()
+                .ToListAsync();
 
             ProdukTerlaris = new ObservableCollection<ProdukTerlarisModel>(queryTerlaris);
 
             // 2. Ambil Produk dengan Stok Kritis (Stok <= StokMinimum)
-            var queryStokKritis = db.Produk
+            var queryStokKritis = await db.Produk
                 .Where(p => p.Stok <= p.StokMinimum)
                 .OrderBy(p => p.Stok)
-                .ToList();
+                .AsNoTracking()
+                .ToListAsync();
 
             StokKritis = new ObservableCollection<Produk>(queryStokKritis);
         }
 
         // Quick Filter: Hari Ini
         [RelayCommand]
-        public void FilterHariIni()
+        public async Task FilterHariIniAsync()
         {
             TanggalAwal = DateTime.Today;
             TanggalAkhir = DateTime.Today;
-            MuatLaporan();
+            await MuatLaporanAsync();
         }
 
         // Quick Filter: Bulan Ini
         [RelayCommand]
-        public void FilterBulanIni()
+        public async Task FilterBulanIniAsync()
         {
             var now = DateTime.Now;
             TanggalAwal = new DateTime(now.Year, now.Month, 1);
             TanggalAkhir = new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month));
-            MuatLaporan();
+            await MuatLaporanAsync();
         }
 
         [RelayCommand]
@@ -161,16 +169,13 @@ namespace KasirKu.ViewModels
                 try
                 {
                     var sb = new StringBuilder();
-                    // Header Kolom CSV
                     sb.AppendLine("Nomor Nota;Tanggal;Kasir;Total Belanja;Total Bayar;Kembalian");
 
-                    // Isi Baris Transaksi
                     foreach (var t in DaftarTransaksi)
                     {
                         sb.AppendLine($"{t.NomorNota};{t.Tanggal:dd/MM/yyyy HH:mm};{t.NamaKasir};{t.TotalHarga};{t.TotalBayar};{t.Kembalian}");
                     }
 
-                    // Tulis ke file menggunakan encoding UTF8 dengan BOM agar tanda pemisah terbaca rapi di Microsoft Excel
                     File.WriteAllText(saveFileDialog.FileName, sb.ToString(), Encoding.UTF8);
 
                     _dialogService.ShowInfo("Laporan berhasil diekspor ke file CSV!", "Sukses Export");
@@ -203,7 +208,6 @@ namespace KasirKu.ViewModels
 
                 if (saveFileDialog.ShowDialog() == true)
                 {
-                    // Copy file database fisik ke direktori tujuan
                     File.Copy(sourceDb, saveFileDialog.FileName, overwrite: true);
 
                     _dialogService.ShowInfo("Backup database berhasil disimpan!", "Sukses Backup");

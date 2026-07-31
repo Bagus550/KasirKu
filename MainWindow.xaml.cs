@@ -5,6 +5,7 @@ using KasirKu.Views;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace KasirKu
 {
@@ -31,43 +32,68 @@ namespace KasirKu
                 };
                 return clockInWin.ShowDialog();
             };
+
+            // 4. Memicu Auto Refresh Laporan saat Tab Laporan dipilih/diklik
+            TabUtama.SelectionChanged += TabUtama_SelectionChanged;
         }
 
-        private void LoginVm_LoginBerhasilEvent(object? sender, Kasir user)
+        private async void LoginVm_LoginBerhasilEvent(object? sender, Kasir user)
         {
-            // Sembunyikan layar login, tampilkan layar utama
             ViewLogin.Visibility = Visibility.Collapsed;
             GridUtama.Visibility = Visibility.Visible;
 
             TxtInfoUser.Text = $"User Aktif: {user.Nama} ({user.Role})";
 
-            // Atur Hak Akses & Tab Default Berdasarkan Role
             if (user.Role.Equals("Kasir", StringComparison.OrdinalIgnoreCase))
             {
-                // Inject KasirViewModel yang lengkap dengan Services ke ViewKasir
                 ViewKasir.DataContext = App.ServiceProvider.GetRequiredService<KasirViewModel>();
 
-                // Role Kasir: Hanya tampilkan Tab Kasir
                 TabKasir.Visibility = Visibility.Visible;
                 TabLaporan.Visibility = Visibility.Collapsed;
                 TabProduk.Visibility = Visibility.Collapsed;
                 TabAuditLog.Visibility = Visibility.Collapsed;
+                TabSystemLog.Visibility = Visibility.Collapsed; // Sembunyikan dari Kasir
 
-                TabUtama.SelectedItem = TabKasir; // Set tab aktif ke Kasir
+                TabUtama.SelectedItem = TabKasir;
             }
             else
             {
-                // Inject ViewModel khusus Admin
-                ViewProduk.DataContext = App.ServiceProvider.GetRequiredService<ProdukViewModel>();
-                ViewAuditLog.DataContext = App.ServiceProvider.GetRequiredService<LogViewModel>();
+                var laporanVm = App.ServiceProvider.GetRequiredService<LaporanViewModel>();
+                ViewLaporan.DataContext = laporanVm;
 
-                // Role Admin: Tampilkan Tab Laporan, Produk, & Audit Log
+                ViewProduk.DataContext = App.ServiceProvider.GetRequiredService<ProdukViewModel>();
+                ViewAuditLog.DataContext = App.ServiceProvider.GetRequiredService<AuditLogViewModel>();
+
+                var logVm = App.ServiceProvider.GetRequiredService<LogViewModel>();
+                ViewSystemLog.DataContext = logVm;
+
                 TabKasir.Visibility = Visibility.Collapsed;
                 TabLaporan.Visibility = Visibility.Visible;
                 TabProduk.Visibility = Visibility.Visible;
                 TabAuditLog.Visibility = Visibility.Visible;
+                TabSystemLog.Visibility = Visibility.Visible;
 
-                TabUtama.SelectedItem = TabLaporan; // Set tab aktif default ke Laporan
+                TabUtama.SelectedItem = TabLaporan;
+
+                await laporanVm.MuatLaporanAsync();
+            }
+        }
+
+        private async void TabUtama_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.Source != TabUtama) return;
+
+            if (TabUtama.SelectedItem == TabLaporan && ViewLaporan.DataContext is LaporanViewModel laporanVm)
+            {
+                await laporanVm.MuatLaporanAsync();
+            }
+            else if (TabUtama.SelectedItem == TabAuditLog && ViewAuditLog.DataContext is AuditLogViewModel auditVm)
+            {
+                await auditVm.MuatLogAsync();
+            }
+            else if (TabUtama.SelectedItem == TabSystemLog && ViewSystemLog.DataContext is LogViewModel logVm)
+            {
+                logVm.MuatDaftarLog();
             }
         }
 
@@ -79,13 +105,11 @@ namespace KasirKu
             // A. JIKA USER ADALAH KASIR, TAMPILKAN POPUP CLOCK-OUT
             if (currentKasir != null && currentKasir.Role?.Equals("Kasir", StringComparison.OrdinalIgnoreCase) == true && currentSession != null)
             {
-                // Ambil IDialogService dari Dependency Injection Container
                 var dialogService = App.ServiceProvider.GetRequiredService<IDialogService>();
 
-                // Lewatkan dialogService sebagai parameter kedua ke ClockOutWindow
                 var clockOutWin = new ClockOutWindow(currentSession, dialogService)
                 {
-                    Owner = this // Atur Owner agar posisi dialog berada di atas MainWindow
+                    Owner = this
                 };
 
                 bool? result = clockOutWin.ShowDialog();

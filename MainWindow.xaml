@@ -11,7 +11,7 @@
         <!-- Tampilan Form Login (Muncul di awal) -->
         <views:LoginView x:Name="ViewLogin" />
 
-        <!-- Tampilan Utam Tab Menu (Tersembunyi sebelum Login) -->
+        <!-- Tampilan Utama Tab Menu (Tersembunyi sebelum Login) -->
         <Grid x:Name="GridUtama" Visibility="Collapsed">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -26,7 +26,7 @@
                 </Grid>
             </Border>
 
-            <!-- Berikan x:Name pada TabControl -->
+            <!-- TabControl Menu Utama -->
             <TabControl x:Name="TabUtama" Grid.Row="1" Margin="5">
 
                 <!-- Tab 1: Transaksi Kasir -->
@@ -44,8 +44,14 @@
                     <views:ProdukView x:Name="ViewProduk"/>
                 </TabItem>
 
-                <TabItem x:Name="TabAuditLog" Header="📋 Audit Log &amp; Sesi Kasir">
+                <!-- Tab 4: Audit Log & Sesi Kasir -->
+                <TabItem x:Name="TabAuditLog" Header="📋 Audit Log &amp; Sesi Kasir" FontSize="14" FontWeight="Bold">
                     <views:AuditLogView x:Name="ViewAuditLog" />
+                </TabItem>
+
+                <!-- Tab 5: System Log Viewer (Khusus Admin / Error Tracing) -->
+                <TabItem x:Name="TabSystemLog" Header="⚙️ System Error Log" FontSize="14" FontWeight="Bold">
+                    <views:LogView x:Name="ViewSystemLog" />
                 </TabItem>
 
             </TabControl>

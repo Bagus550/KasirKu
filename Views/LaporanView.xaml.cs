@@ -1,4 +1,5 @@
 ﻿using KasirKu.ViewModels;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace KasirKu.Views
@@ -8,15 +9,19 @@ namespace KasirKu.Views
         public LaporanView()
         {
             InitializeComponent();
+        }
 
-            // Refresh data laporan setiap kali tab Laporan dibuka
-            this.Loaded += (s, e) =>
+        // Method ini yang dicari oleh Loaded="UserControl_Loaded" di XAML
+        private async void UserControl_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is LaporanViewModel vm)
             {
-                if (DataContext is LaporanViewModel vm)
-                {
-                    vm.MuatLaporan();
-                }
-            };
+                await vm.MuatLaporanAsync();
+            }
+            else
+            {
+                MessageBox.Show("DataContext NULL / Tidak Terhubung ke LaporanViewModel!", "Debug Warning");
+            }
         }
     }
 }

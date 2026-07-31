@@ -1,6 +1,7 @@
 ﻿using KasirKu.Data; // Pastikan namespace AppDbContext di-import
 using KasirKu.Services;
 using KasirKu.ViewModels;
+using KasirKu.Views;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -32,6 +33,9 @@ namespace KasirKu
             // 4. Tampilkan MainWindow
             var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
             mainWindow.Show();
+
+            var logger = ServiceProvider.GetService<ILoggerService>();
+            logger?.LogInfo("Aplikasi KasirKu berhasil dijalankan.");
         }
 
         private void InitializeDatabase()
@@ -70,6 +74,7 @@ namespace KasirKu
             services.AddTransient<KasirViewModel>();
             services.AddTransient<ProdukViewModel>();
             services.AddTransient<AuditLogViewModel>();
+            services.AddTransient<LaporanViewModel>();
 
             services.AddSingleton<MainWindow>();
         }

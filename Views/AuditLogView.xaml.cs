@@ -9,15 +9,11 @@ namespace KasirKu.Views
         {
             InitializeComponent();
 
-            var vm = new AuditLogViewModel();
-            DataContext = vm;
-
-            // Pemicu Auto-Refresh setiap kali Admin klik Tab Audit Log
-            this.IsVisibleChanged += (s, e) =>
+            Loaded += async (s, e) =>
             {
-                if ((bool)e.NewValue && DataContext is AuditLogViewModel activeVm)
+                if (DataContext is AuditLogViewModel vm)
                 {
-                    activeVm.MuatDataAudit();
+                    await vm.MuatLogAsync();
                 }
             };
         }

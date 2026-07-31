@@ -56,9 +56,6 @@ namespace KasirKu.Services
             catch { }
         }
 
-        /// <summary>
-        /// Mengambil daftar semua file log di direktori Logs (diurutkan dari yang terbaru).
-        /// </summary>
         public List<FileInfo> GetLogFiles()
         {
             if (!Directory.Exists(_logFolderPath)) return new List<FileInfo>();
@@ -69,17 +66,25 @@ namespace KasirKu.Services
                                 .ToList();
         }
 
-        /// <summary>
-        /// Membaca isi file log berdasarkan nama file.
-        /// </summary>
         public string ReadLogFile(string fileName)
         {
             string filePath = Path.Combine(_logFolderPath, fileName);
-            if (File.Exists(filePath))
+
+            if (!File.Exists(filePath))
             {
-                return File.ReadAllText(filePath);
+                return "File log tidak ditemukan.";
             }
-            return "File log tidak ditemukan.";
+
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
+            catch (Exception ex)
+            {
+                return $"[Gagal membaca file log]: {ex.Message}";
+            }
         }
     }
 }
