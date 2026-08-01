@@ -14,7 +14,7 @@ namespace KasirKu.Services
             List<CartItem> cartItems,
             decimal totalBayar,
             int kasirId,
-            int? shiftId = null);
+            int? kasirSessionId = null);
     }
 
     public class TransactionResult
@@ -38,8 +38,9 @@ namespace KasirKu.Services
             List<CartItem> cartItems,
             decimal totalBayar,
             int kasirId,
-            int? shiftId = null)
+            int? kasirSessionId = null)
         {
+            // 1. Validasi Input
             if (cartItems == null || !cartItems.Any())
             {
                 return new TransactionResult { IsSuccess = false, Message = "Keranjang belanja kosong." };
@@ -58,114 +59,107 @@ namespace KasirKu.Services
 
             decimal kembalian = totalBayar - totalHarga;
 
-            // Jalankan murni di Background Thread
-            return await Task.Run(async () =>
+            // 2. Eksekusi Database Operation (Tanpa Task.Run karena I/O DB sudah Asynchronous)
+            try
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                await using var dbTransaction = await context.Database.BeginTransactionAsync();
 
-                await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+                var productIds = cartItems.Select(c => c.Produk.Id).ToList();
+                var produkDbList = await context.Produk
+                    .Where(p => productIds.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id);
 
-                using var dbTransaction = await context.Database.BeginTransactionAsync();
+                var detailTransaksiList = new List<DetailTransaksi>();
 
-                try
+                foreach (var cartItem in cartItems)
                 {
-                    var productIds = cartItems.Select(c => c.Produk.Id).ToList();
-                    var produkDbList = await context.Produk
-                        .Where(p => productIds.Contains(p.Id))
-                        .ToDictionaryAsync(p => p.Id);
-
-                    var detailTransaksiList = new List<DetailTransaksi>();
-
-                    foreach (var cartItem in cartItems)
+                    if (!produkDbList.TryGetValue(cartItem.Produk.Id, out var produk))
                     {
-                        if (!produkDbList.TryGetValue(cartItem.Produk.Id, out var produk))
+                        await dbTransaction.RollbackAsync();
+                        return new TransactionResult
                         {
-                            await dbTransaction.RollbackAsync();
-                            return new TransactionResult
-                            {
-                                IsSuccess = false,
-                                Message = $"Produk '{cartItem.Produk.Nama}' tidak ditemukan di database."
-                            };
-                        }
-
-                        if (produk.Stok < cartItem.Jumlah)
-                        {
-                            await dbTransaction.RollbackAsync();
-                            return new TransactionResult
-                            {
-                                IsSuccess = false,
-                                Message = $"Stok '{produk.Nama}' tidak mencukupi. Sisa stok: {produk.Stok}"
-                            };
-                        }
-
-                        // Potong Stok
-                        produk.Stok -= cartItem.Jumlah;
-
-                        detailTransaksiList.Add(new DetailTransaksi
-                        {
-                            ProdukId = cartItem.Produk.Id,
-                            NamaProduk = cartItem.Produk.Nama,
-                            HargaJual = cartItem.HargaJual,
-                            Jumlah = cartItem.Jumlah
-                        });
+                            IsSuccess = false,
+                            Message = $"Produk '{cartItem.Produk.Nama}' tidak ditemukan di database."
+                        };
                     }
 
-                    // 3. Buat Header Transaksi
-                    var transaksi = new Transaksi
+                    if (produk.Stok < cartItem.Jumlah)
                     {
-                        NomorNota = $"INV/{DateTime.Now:yyyyMMdd}/{Guid.NewGuid().ToString()[..5].ToUpper()}",
-                        Tanggal = DateTime.Now,
-                        TotalHarga = totalHarga,
-                        TotalBayar = totalBayar,
-                        Kembalian = kembalian,
-                        KasirSessionId = shiftId,
-                        NamaKasir = SessionManager.CurrentKasir?.Nama ?? "Admin",
-                        DetailTransaksi = detailTransaksiList
-                    };
-
-                    if (shiftId.HasValue)
-                    {
-                        var currentSessionDb = await context.KasirSession.FindAsync(shiftId.Value);
-                        if (currentSessionDb != null)
+                        await dbTransaction.RollbackAsync();
+                        return new TransactionResult
                         {
-                            currentSessionDb.TotalTunaiSistem += totalHarga;
-                        }
+                            IsSuccess = false,
+                            Message = $"Stok '{produk.Nama}' tidak mencukupi. Sisa stok: {produk.Stok}"
+                        };
                     }
 
-                    context.Transaksi.Add(transaksi);
+                    // Potong Stok
+                    produk.Stok -= cartItem.Jumlah;
 
-                    // 4. Catat Audit Log
-                    context.AuditLog.Add(new AuditLog
+                    detailTransaksiList.Add(new DetailTransaksi
                     {
-                        KasirId = kasirId,
-                        Waktu = DateTime.Now,
-                        JenisAksi = "PROSES_TRANSAKSI",
-                        Keterangan = $"Berhasil memproses transaksi {transaksi.NomorNota} senilai Rp{totalHarga:N0}"
+                        ProdukId = cartItem.Produk.Id,
+                        NamaProduk = cartItem.Produk.Nama,
+                        HargaJual = cartItem.HargaJual,
+                        Jumlah = cartItem.Jumlah
                     });
-
-                    // 5. Save Changes sekaligus dalam 1 batch
-                    await context.SaveChangesAsync();
-                    await dbTransaction.CommitAsync();
-
-                    return new TransactionResult
-                    {
-                        IsSuccess = true,
-                        Message = "Transaksi berhasil disimpan!",
-                        Kembalian = kembalian,
-                        TransaksiData = transaksi
-                    };
                 }
-                catch (Exception ex)
+
+                // 3. Buat Header Transaksi
+                var transaksi = new Transaksi
                 {
-                    await dbTransaction.RollbackAsync();
-                    var innerMsg = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
-                    return new TransactionResult
+                    NomorNota = $"INV/{DateTime.Now:yyyyMMdd}/{Guid.NewGuid().ToString()[..5].ToUpper()}",
+                    Tanggal = DateTime.Now,
+                    TotalHarga = totalHarga,
+                    TotalBayar = totalBayar,
+                    Kembalian = kembalian,
+                    KasirSessionId = kasirSessionId,
+                    NamaKasir = SessionManager.CurrentKasir?.Nama ?? "Kasir",
+                    DetailTransaksi = detailTransaksiList
+                };
+
+                if (kasirSessionId.HasValue)
+                {
+                    var currentSessionDb = await context.KasirSession.FindAsync(kasirSessionId.Value);
+                    if (currentSessionDb != null)
                     {
-                        IsSuccess = false,
-                        Message = $"Terjadi kesalahan saat menyimpan transaksi: {innerMsg}"
-                    };
+                        currentSessionDb.TotalTunaiSistem += totalHarga;
+                    }
                 }
-            });
+
+                context.Transaksi.Add(transaksi);
+
+                // 4. Catat Audit Log
+                context.AuditLog.Add(new AuditLog
+                {
+                    KasirId = kasirId,
+                    Waktu = DateTime.Now,
+                    JenisAksi = "PROSES_TRANSAKSI",
+                    Keterangan = $"Berhasil memproses transaksi {transaksi.NomorNota} senilai Rp{totalHarga:N0}"
+                });
+
+                // 5. Commit batch perubahan
+                await context.SaveChangesAsync();
+                await dbTransaction.CommitAsync();
+
+                return new TransactionResult
+                {
+                    IsSuccess = true,
+                    Message = "Transaksi berhasil disimpan!",
+                    Kembalian = kembalian,
+                    TransaksiData = transaksi
+                };
+            }
+            catch (Exception ex)
+            {
+                var innerMsg = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
+                return new TransactionResult
+                {
+                    IsSuccess = false,
+                    Message = $"Terjadi kesalahan saat menyimpan transaksi: {innerMsg}"
+                };
+            }
         }
     }
 }

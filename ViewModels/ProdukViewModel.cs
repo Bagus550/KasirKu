@@ -75,18 +75,35 @@ namespace KasirKu.ViewModels
             try
             {
                 using var db = new AppDbContext();
+                int currentKasirId = SessionManager.CurrentKasir?.Id ?? 0;
 
                 if (SelectedProduk.Id == 0)
                 {
-                    // TAMBAH PRODUK BARU
+                    // 1. TAMBAH PRODUK BARU
                     db.Produk.Add(SelectedProduk);
+
+                    // Catat Audit Log Tambah Produk
+                    db.AuditLog.Add(new AuditLog
+                    {
+                        KasirId = currentKasirId,
+                        Waktu = DateTime.Now,
+                        JenisAksi = "TAMBAH_PRODUK",
+                        Keterangan = $"Menambah produk baru '{SelectedProduk.Nama}' (SKU: {SelectedProduk.SKU ?? "-"}), " +
+                                     $"Harga Jual: Rp{SelectedProduk.HargaJual:N0}, Stok Awal: {SelectedProduk.Stok}"
+                    });
                 }
                 else
                 {
+                    // 2. EDIT PRODUK
                     var produkDb = db.Produk.Find(SelectedProduk.Id);
 
                     if (produkDb != null)
                     {
+                        // Rincian histori sebelum diedit untuk dicatat di log
+                        string infoPerubahan = $"Mengubah produk '{produkDb.Nama}' (ID: {produkDb.Id}). " +
+                                               $"Harga Jual: Rp{produkDb.HargaJual:N0} -> Rp{SelectedProduk.HargaJual:N0}, " +
+                                               $"Stok: {produkDb.Stok} -> {SelectedProduk.Stok}";
+
                         produkDb.SKU = SelectedProduk.SKU;
                         produkDb.Nama = SelectedProduk.Nama;
                         produkDb.Kategori = SelectedProduk.Kategori;
@@ -94,6 +111,15 @@ namespace KasirKu.ViewModels
                         produkDb.HargaJual = SelectedProduk.HargaJual;
                         produkDb.Stok = SelectedProduk.Stok;
                         produkDb.StokMinimum = SelectedProduk.StokMinimum;
+
+                        // Catat Audit Log Edit Produk
+                        db.AuditLog.Add(new AuditLog
+                        {
+                            KasirId = currentKasirId,
+                            Waktu = DateTime.Now,
+                            JenisAksi = "EDIT_PRODUK",
+                            Keterangan = infoPerubahan
+                        });
                     }
                     else
                     {
@@ -137,6 +163,16 @@ namespace KasirKu.ViewModels
                 if (produkDb != null)
                 {
                     db.Produk.Remove(produkDb);
+
+                    // Catat Audit Log Hapus Produk
+                    db.AuditLog.Add(new AuditLog
+                    {
+                        KasirId = SessionManager.CurrentKasir?.Id ?? 0,
+                        Waktu = DateTime.Now,
+                        JenisAksi = "HAPUS_PRODUK",
+                        Keterangan = $"Menghapus produk '{produkDb.Nama}' (SKU: {produkDb.SKU ?? "-"}, Stok Akhir: {produkDb.Stok}) dari sistem."
+                    });
+
                     db.SaveChanges();
 
                     _dialogService.ShowInfo("Produk berhasil dihapus!", "Sukses");

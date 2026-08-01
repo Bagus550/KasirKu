@@ -18,9 +18,6 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private string _password = string.Empty;
 
-        // Menyimpan data kasir/user yang sedang login
-        public static Kasir? UserLoginAktif { get; private set; }
-
         // Event untuk memberitahu MainWindow/App Controller jika login berhasil
         public event EventHandler<Kasir>? LoginBerhasilEvent;
 
@@ -56,12 +53,11 @@ namespace KasirKu.ViewModels
                     return;
                 }
 
-                UserLoginAktif = user;
                 _dialogService.ShowInfo($"Selamat datang, {user.Nama} ({user.Role})!", "Login Berhasil");
 
                 if (user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
                 {
-                    // JIKA ADMIN: Bypass ClockIn & Buat Session Dummy Khusus Admin
+                    // JIKA ADMIN: Bypass ClockIn & Buat Session Khusus Admin
                     var adminSession = new KasirSession
                     {
                         KasirId = user.Id,
@@ -83,12 +79,14 @@ namespace KasirKu.ViewModels
 
                     db.SaveChanges();
 
+                    // Simpan sesi ke SessionManager
                     SessionManager.SetSession(user, adminSession);
                     LoginBerhasilEvent?.Invoke(this, user);
                 }
                 else
                 {
                     // JIKA KASIR: Wajib Clock-In (Pilih Shift & Input Modal Awal)
+                    // RequestClockInHandler diharapkan memanggil SessionManager.SetSession() secara internal jika berhasil
                     bool isClockInSuccess = RequestClockInHandler?.Invoke(user) ?? false;
 
                     if (isClockInSuccess)
@@ -97,7 +95,8 @@ namespace KasirKu.ViewModels
                     }
                     else
                     {
-                        UserLoginAktif = null;
+                        // Jika Batal Clock-In, pastikan sesi dibersihkan
+                        SessionManager.ClearSession();
                     }
                 }
             }

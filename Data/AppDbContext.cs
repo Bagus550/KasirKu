@@ -27,8 +27,6 @@ namespace KasirKu.Data
             if (!optionsBuilder.IsConfigured)
             {
                 string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
-
-                // Serahkan pembuatan & penutupan koneksi SQLite ke EF Core sepenuhnya
                 optionsBuilder.UseSqlite($"Data Source={dbPath}");
             }
         }

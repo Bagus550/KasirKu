@@ -57,6 +57,17 @@ namespace KasirKu.ViewModels
             _dialogService = dialogService;
             _printerService = printerService;
 
+            SessionManager.SessionCleared += OnSessionCleared;
+
+            HitungTotal();
+        }
+
+        private void OnSessionCleared(object? sender, EventArgs e)
+        {
+            Keranjang.Clear();
+            DaftarHold.Clear();
+            InputBarcode = string.Empty;
+            TotalBayar = 0;
             HitungTotal();
         }
 
@@ -210,7 +221,7 @@ namespace KasirKu.ViewModels
                     // Cetak Struk Async (NullPrinterService saat dev / PrinterService saat ada fisik)
                     if (result.TransaksiData != null)
                     {
-                        await _printerService.CetakStrukAsync(result.TransaksiData);
+                        _ = _printerService.CetakStrukAsync(result.TransaksiData);
                     }
 
                     _dialogService.ShowInfo(

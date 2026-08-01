@@ -8,8 +8,8 @@ namespace KasirKu.Services
 {
     public enum PrinterPaperSize
     {
-        Paper58mm, // Standar Printer Kasir Bluetooth / POS Kecil
-        Paper80mm  // Standar Printer Kasir Besar (Epson TM-T88, dll)
+        Paper58mm,
+        Paper80mm
     }
 
     public interface IPrinterService
@@ -27,7 +27,7 @@ namespace KasirKu.Services
         }
 
         /// <summary>
-        /// Mencetak struk transaksi secara asynchronous agar UI tidak freeze.
+        /// Mencetak struk transaksi secara asynchronous tanpa memblokir UI thread.
         /// </summary>
         public async Task<bool> CetakStrukAsync(Transaksi transaksi, PrinterPaperSize paperSize = PrinterPaperSize.Paper58mm, string? namaPrinter = null)
         {
@@ -37,42 +37,58 @@ namespace KasirKu.Services
                 return false;
             }
 
-            return await Task.Run(() =>
+            if (PrinterSettings.InstalledPrinters.Count == 0)
+            {
+                _dialogService.ShowWarning(
+                    "Tidak ada driver printer yang terinstal di sistem Windows Anda. Cetak dilewati.",
+                    "Cetak Nota Dilewati"
+                );
+                return false;
+            }
+
+            // Jalankan proses driver printer di background thread
+            var result = await Task.Run(() =>
             {
                 try
                 {
                     using var printDoc = new PrintDocument();
 
-                    // Atur nama printer jika dispesifikasikan, jika tidak pakai Default Printer OS
                     if (!string.IsNullOrWhiteSpace(namaPrinter))
                     {
                         printDoc.PrinterSettings.PrinterName = namaPrinter;
                     }
 
+                    // Cek ketersediaan/keabsahan printer
                     if (!printDoc.PrinterSettings.IsValid)
                     {
-                        _dialogService.ShowError(
-                            $"Printer '{namaPrinter ?? "Default"}' tidak ditemukan atau tidak siap.",
-                            "Error Printer"
-                        );
-                        return false;
+                        return (Success: false, ErrorMessage: $"Printer '{namaPrinter ?? "Default"}' tidak ditemukan atau tidak siap.");
                     }
 
                     // Hilangkan margin bawaan driver Windows agar tidak terpotong di printer thermal
                     printDoc.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
 
-                    // Event handler tata letak/desain struk thermal dengan paperSize dinamis
+                    // Event handler tata letak/desain struk thermal
                     printDoc.PrintPage += (sender, e) => GambarkanStruk(e, transaksi, paperSize);
 
                     printDoc.Print();
-                    return true;
+                    return (Success: true, ErrorMessage: string.Empty);
                 }
                 catch (Exception ex)
                 {
-                    _dialogService.ShowError($"Gagal mencetak struk: {ex.Message}", "Error Printer");
-                    return false;
+                    return (Success: false, ErrorMessage: ex.Message);
                 }
             });
+
+            // Tampilkan UI Dialog secara aman di Main UI Thread jika ada kegagalan
+            if (!result.Success)
+            {
+                _dialogService.ShowWarning(
+                    $"Transaksi berhasil disimpan, namun nota gagal dicetak.\nDetail: {result.ErrorMessage}",
+                    "Cetak Nota Dilewati"
+                );
+            }
+
+            return result.Success;
         }
 
         /// <summary>
@@ -117,7 +133,6 @@ namespace KasirKu.Services
             {
                 foreach (var item in transaksi.DetailTransaksi)
                 {
-                    // Potong nama jika terlalu panjang agar tidak merusak layout
                     string namaProduk = item.NamaProduk.Length > maxChars
                         ? item.NamaProduk.Substring(0, maxChars - 3) + "..."
                         : item.NamaProduk;

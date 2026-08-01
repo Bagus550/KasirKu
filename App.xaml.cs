@@ -45,12 +45,15 @@ namespace KasirKu
                 using var scope = ServiceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                // Membuat file database dan seluruh tabel (termasuk AuditLog) jika belum ada
+                // 1. Membuat file database dan seluruh tabel jika belum ada
                 db.Database.EnsureCreated();
+
+                // 2. [TAMBAHAN] Aktifkan mode WAL (Write-Ahead Logging) & Timeout sekali saat startup
+                db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+                db.Database.ExecuteSqlRaw("PRAGMA busy_timeout=5000;");
             }
             catch (Exception ex)
             {
-                // Catat ke logger jika terjadi kegagalan koneksi database saat startup
                 var logger = ServiceProvider.GetService<ILoggerService>();
                 logger?.LogError(ex, "Database Initialization");
             }
@@ -61,9 +64,13 @@ namespace KasirKu
             services.AddDbContextFactory<AppDbContext>(options =>
                 options.UseSqlite("Data Source=kasirku.db"));
 
+            string dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
+            services.AddDbContextFactory<AppDbContext>(options =>
+                options.UseSqlite($"Data Source={dbPath}"));
+
             services.AddSingleton<ILoggerService, LoggerService>();
 
-            services.AddSingleton<IPrinterService, NullPrinterService>();
+            services.AddSingleton<IPrinterService, PrinterService>();
 
             services.AddSingleton<IDialogService, DialogService>();
             services.AddTransient<ITransactionService, TransactionService>();

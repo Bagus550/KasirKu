@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:converters="clr-namespace:KasirKu.Converters"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="450" d:DesignWidth="850">
 
     <UserControl.Resources>
         <converters:BoolToStatusConverter x:Key="BoolToStatusConverter"/>
@@ -17,12 +17,19 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Filter Tanggal -->
+        <!-- Filter Tanggal & Jenis Aksi -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
             <TextBlock Text="Filter Tanggal:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
             <DatePicker SelectedDate="{Binding TanggalAwal, Mode=TwoWay}" Width="120" Margin="0,0,10,0"/>
             <TextBlock Text="s/d" VerticalAlignment="Center" Margin="0,0,10,0"/>
             <DatePicker SelectedDate="{Binding TanggalAkhir, Mode=TwoWay}" Width="120" Margin="0,0,15,0"/>
+
+            <!-- Filter Khusus Aksi Sensitif -->
+            <TextBlock Text="Filter Aksi:" VerticalAlignment="Center" FontWeight="Bold" Margin="10,0,10,0"/>
+            <ComboBox ItemsSource="{Binding DaftarFilterAksi}" 
+                      SelectedItem="{Binding SelectedJenisAksi, Mode=TwoWay}" 
+                      Width="160" Margin="0,0,15,0"/>
+
             <Button Content="🔍 Tampilkan Log" Command="{Binding MuatLogCommand}" Padding="10,5" Background="#0D6EFD" Foreground="White" FontWeight="Bold"/>
         </StackPanel>
 
@@ -43,14 +50,58 @@
                 </DataGrid>
             </TabItem>
 
-            <!-- TAB 2: Audit Trail Aktivitas Sistem (Tetap) -->
+            <!-- TAB 2: Audit Trail Aktivitas Sistem & Aksi Sensitif -->
             <TabItem Header="🕒 Log Aktivitas Sistem">
                 <DataGrid ItemsSource="{Binding DaftarAuditLog}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10" GridLinesVisibility="Horizontal">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Waktu" Binding="{Binding Waktu, StringFormat=\{0:dd/MM/yyyy HH:mm:ss\}}" Width="140"/>
                         <DataGridTextColumn Header="Pengguna / Kasir" Binding="{Binding Kasir.Nama, TargetNullValue='System'}" Width="150"/>
-                        <DataGridTextColumn Header="Aksi" Binding="{Binding JenisAksi}" Width="130" FontWeight="Bold"/>
-                        <DataGridTextColumn Header="Keterangan Audit" Binding="{Binding Keterangan}" Width="*"/>
+
+                        <!-- Kolom Aksi dengan Highlight Warna Sensitivitas -->
+                        <DataGridTemplateColumn Header="Aksi" Width="160">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding JenisAksi}" FontWeight="Bold" VerticalAlignment="Center" Margin="5,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#0D6EFD"/>
+                                                <!-- Default Biru -->
+                                                <Style.Triggers>
+                                                    <!-- Merah untuk Aksi Berbahaya / Hapus -->
+                                                    <DataTrigger Binding="{Binding JenisAksi}" Value="HAPUS_PRODUK">
+                                                        <Setter Property="Foreground" Value="#DC3545"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding JenisAksi}" Value="BATAL_TRANSAKSI">
+                                                        <Setter Property="Foreground" Value="#DC3545"/>
+                                                    </DataTrigger>
+                                                    <!-- Oranye untuk Edit / Perubahan Data -->
+                                                    <DataTrigger Binding="{Binding JenisAksi}" Value="EDIT_PRODUK">
+                                                        <Setter Property="Foreground" Value="#FD7E14"/>
+                                                    </DataTrigger>
+                                                    <!-- Hijau untuk Tambah / Sukses -->
+                                                    <DataTrigger Binding="{Binding JenisAksi}" Value="TAMBAH_PRODUK">
+                                                        <Setter Property="Foreground" Value="#198754"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding JenisAksi}" Value="PROSES_TRANSAKSI">
+                                                        <Setter Property="Foreground" Value="#198754"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Kolom Keterangan dengan Wrap Text -->
+                        <DataGridTextColumn Header="Keterangan Audit" Binding="{Binding Keterangan}" Width="*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>

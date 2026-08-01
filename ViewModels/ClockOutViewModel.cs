@@ -131,6 +131,7 @@ namespace KasirKu.ViewModels
                 }
 
                 _dialogService.ShowInfo("Berhasil menyelesaikan shift. Terima kasih!", "Informasi");
+                SessionManager.ClearSession();
                 _onSuccess?.Invoke();
             }
             catch (Exception ex)
