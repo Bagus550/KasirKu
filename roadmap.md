@@ -5,12 +5,12 @@
 **Fokus:** Memastikan tidak ada kebocoran data antar-kasir/shift.
 
 ### Pembersihan Sesi (`SessionManager.cs`)
-- [ ] Buat method `ClearSession()` untuk mengosongkan entitas kasir dan shift aktif.
-- [ ] Integrasikan `ClearSession()` ke dalam aliran Logout dan Clock-Out.
+- [x] Buat method `ClearSession()` untuk mengosongkan entitas kasir dan shift aktif.
+- [x] Integrasikan `ClearSession()` ke dalam aliran Logout dan Clock-Out.
 
 ### Pembersihan Keranjang (`KasirViewModel.cs`)
-- [ ] Pastikan list `CartItems` di-`Clear()` saat sesi kasir berakhir.
-- [ ] Riset/cek ulang apakah ada state unhandled saat pergantian user.
+- [x] Pastikan list `CartItems` di-`Clear()` saat sesi kasir berakhir.
+- [x] Riset/cek ulang apakah ada state unhandled saat pergantian user.
 
 ---
 
@@ -19,12 +19,12 @@
 **Fokus:** Mencegah stok korup, error konkurensi, dan masalah lifecycle EF Core.
 
 ### Database Transaction (`TransactionService.cs`)
-- [ ] Bungkus proses simpan nota & pemotongan stok menggunakan `BeginTransactionAsync()`.
-- [ ] Tambahkan mekanisme `RollbackAsync()` jika salah satu proses insert detail transaksi atau pemutakhiran stok gagal.
+- [x] Bungkus proses simpan nota & pemotongan stok menggunakan `BeginTransactionAsync()`.
+- [x] Tambahkan mekanisme `RollbackAsync()` jika salah satu proses insert detail transaksi atau pemutakhiran stok gagal.
 
 ### EF Core Lifecycle (`AppDbContext.cs` & Services)
-- [ ] Cek pendaftaran `DbContext` di DI Container (pastikan Transient/Scoped, bukan Singleton).
-- [ ] Tangani tracking entity error pada stok produk di `ProductService.cs`.
+- [x] Cek pendaftaran `DbContext` di DI Container (pastikan Transient/Scoped, bukan Singleton).
+- [x] Tangani tracking entity error pada stok produk di `ProductService.cs`.
 
 ---
 
