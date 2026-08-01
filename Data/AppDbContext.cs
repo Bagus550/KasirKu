@@ -46,16 +46,16 @@ namespace KasirKu.Data
                 new Kasir
                 {
                     Id = 1,
-                    Nama = "Admin KasirKu",
-                    Username = "admin",
+                    Nama = "Bagus Setiawan",
+                    Username = "Bagus",
                     PasswordHash = PasswordHasherHelper.HashPassword(dummyAdmin, "admin123"),
                     Role = "Admin"
                 },
                 new Kasir
                 {
                     Id = 2,
-                    Nama = "Kasir Toko",
-                    Username = "kasir",
+                    Nama = "Anton Wijaya",
+                    Username = "Anton",
                     PasswordHash = PasswordHasherHelper.HashPassword(dummyKasir, "kasir123"),
                     Role = "Kasir"
                 }
