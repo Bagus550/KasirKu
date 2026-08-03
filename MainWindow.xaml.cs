@@ -103,12 +103,11 @@ namespace KasirKu
         {
             var currentKasir = SessionManager.CurrentKasir;
             var currentSession = SessionManager.CurrentSession;
+            var dialogService = App.ServiceProvider.GetRequiredService<IDialogService>();
 
             // A. JIKA USER ADALAH KASIR, TAMPILKAN POPUP CLOCK-OUT
             if (currentKasir != null && currentKasir.Role?.Equals("Kasir", StringComparison.OrdinalIgnoreCase) == true && currentSession != null)
             {
-                var dialogService = App.ServiceProvider.GetRequiredService<IDialogService>();
-
                 var clockOutWin = new ClockOutWindow(currentSession, dialogService)
                 {
                     Owner = this
@@ -121,28 +120,40 @@ namespace KasirKu
                     return; // Jika user membatalkan Clock-Out, hentikan proses Logout
                 }
             }
-            // B. JIKA USER ADALAH ADMIN, UPDATE LOGOUT DIRECTLY
-            else if (currentSession != null)
+            // B. JIKA USER ADALAH ADMIN, TAMPILKAN DIALOG KONFIRMASI DULU
+            else
             {
-                // Gunakan IDbContextFactory agar koneksi DB ditangani DI secara aman
-                var dbFactory = App.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
-                using var db = dbFactory.CreateDbContext();
+                bool konfirmasi = dialogService.ShowConfirmation(
+                    "Apakah Anda yakin ingin keluar dari akun Admin?",
+                    "Konfirmasi Logout"
+                );
 
-                var sessionDb = db.KasirSession.Find(currentSession.Id);
-                if (sessionDb != null && !sessionDb.IsClosed)
+                if (!konfirmasi)
                 {
-                    sessionDb.WaktuLogout = DateTime.Now;
-                    sessionDb.IsClosed = true;
+                    return;
+                }
 
-                    db.AuditLog.Add(new Models.AuditLog
+                if (currentSession != null)
+                {
+                    var dbFactory = App.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+                    using var db = dbFactory.CreateDbContext();
+
+                    var sessionDb = db.KasirSession.Find(currentSession.Id);
+                    if (sessionDb != null && !sessionDb.IsClosed)
                     {
-                        KasirId = sessionDb.KasirId,
-                        Waktu = DateTime.Now,
-                        JenisAksi = "LOGOUT",
-                        Keterangan = $"Admin {currentKasir?.Nama} telah Logout."
-                    });
+                        sessionDb.WaktuLogout = DateTime.Now;
+                        sessionDb.IsClosed = true;
 
-                    db.SaveChanges();
+                        db.AuditLog.Add(new Models.AuditLog
+                        {
+                            KasirId = sessionDb.KasirId,
+                            Waktu = DateTime.Now,
+                            JenisAksi = "LOGOUT",
+                            Keterangan = $"Admin {currentKasir?.Nama} telah Logout."
+                        });
+
+                        db.SaveChanges();
+                    }
                 }
             }
 

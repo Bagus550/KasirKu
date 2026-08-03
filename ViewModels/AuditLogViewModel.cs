@@ -4,10 +4,13 @@ using KasirKu.Data;
 using KasirKu.Models;
 using KasirKu.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace KasirKu.ViewModels
@@ -25,6 +28,9 @@ namespace KasirKu.ViewModels
 
         [ObservableProperty]
         private string _selectedJenisAksi = "Semua Aksi";
+
+        [ObservableProperty]
+        private int _selectedTabIndex;
 
         [ObservableProperty]
         private ObservableCollection<AuditLog> _daftarAuditLog = new();
@@ -111,6 +117,96 @@ namespace KasirKu.ViewModels
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        [RelayCommand]
+        private void ExportCsv()
+        {
+            var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "CSV File (*.csv)|*.csv",
+                FileName = SelectedTabIndex == 0
+                    ? $"Sesi_Kasir_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+                    : $"Audit_Log_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            };
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                try
+                {
+                    var sb = new StringBuilder();
+
+                    if (SelectedTabIndex == 0)
+                    {
+                        // Export Sesi Kasir
+                        sb.AppendLine("Nama Kasir;Shift Work;Waktu Login;Waktu Logout;Modal Awal;Total Omzet;Status");
+                        foreach (var item in DaftarSesiKasir)
+                        {
+                            string kasir = item.Kasir?.Nama ?? "-";
+                            string shift = item.Shift?.NamaShift ?? "Admin (Non-Shift)";
+                            string login = item.WaktuLogin.ToString("dd/MM/yyyy HH:mm");
+                            string logout = item.WaktuLogout.HasValue ? item.WaktuLogout.Value.ToString("dd/MM/yyyy HH:mm") : "Masih Aktif";
+                            string modal = item.ModalAwal.ToString("F0");
+                            string omzet = item.TotalTunaiSistem.ToString("F0");
+                            string status = item.IsClosed ? "Selesai" : "Aktif";
+
+                            sb.AppendLine($"\"{kasir}\";\"{shift}\";\"{login}\";\"{logout}\";{modal};{omzet};\"{status}\"");
+                        }
+                    }
+                    else
+                    {
+                        // Export Log Aktivitas
+                        sb.AppendLine("Waktu;Pengguna / Kasir;Jenis Aksi;Keterangan Audit");
+                        foreach (var item in DaftarAuditLog)
+                        {
+                            string waktu = item.Waktu.ToString("dd/MM/yyyy HH:mm:ss");
+                            string kasir = item.Kasir?.Nama ?? "System";
+                            string aksi = item.JenisAksi;
+                            string ket = item.Keterangan?.Replace("\"", "\"\"") ?? "";
+
+                            sb.AppendLine($"\"{waktu}\";\"{kasir}\";\"{aksi}\";\"{ket}\"");
+                        }
+                    }
+
+                    File.WriteAllText(saveFileDialog.FileName, sb.ToString(), Encoding.UTF8);
+                    _dialogService?.ShowInfo("Export data CSV berhasil disimpan!", "Sukses");
+                }
+                catch (Exception ex)
+                {
+                    _dialogService?.ShowError($"Gagal melakukan export CSV: {ex.Message}", "Error");
+                }
+            }
+        }
+
+        [RelayCommand]
+        private void BackupDatabase()
+        {
+            string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
+
+            if (!File.Exists(dbPath))
+            {
+                _dialogService?.ShowWarning("File database SQLite (kasirku.db) tidak ditemukan!", "Peringatan");
+                return;
+            }
+
+            var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "Database File (*.db)|*.db|SQLite File (*.sqlite)|*.sqlite",
+                FileName = $"KasirKu_Backup_{DateTime.Now:yyyyMMdd_HHmmss}.db"
+            };
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                try
+                {
+                    File.Copy(dbPath, saveFileDialog.FileName, overwrite: true);
+                    _dialogService?.ShowInfo("Backup database berhasil dibuat!", "Sukses");
+                }
+                catch (Exception ex)
+                {
+                    _dialogService?.ShowError($"Gagal membuat backup database: {ex.Message}", "Error");
+                }
             }
         }
 
