@@ -12,6 +12,11 @@ namespace KasirKu.Services
         Task<Produk?> GetProductBySkuOrNameAsync(string keyword);
 
         /// <summary>
+        /// Mencari daftar suggestion produk berdasarkan keyword nama atau SKU (dengan batas limit).
+        /// </summary>
+        Task<List<Produk>> SearchProductsAsync(string keyword, int limit = 8);
+
+        /// <summary>
         /// Mengambil seluruh daftar produk (opsional untuk halaman manajemen produk).
         /// </summary>
         Task<List<Produk>> GetAllProductsAsync();

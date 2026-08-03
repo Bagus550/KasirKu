@@ -6,7 +6,8 @@
              xmlns:vm="clr-namespace:KasirKu.ViewModels"
              mc:Ignorable="d" 
              d:DataContext="{d:DesignInstance Type=vm:KasirViewModel, IsDesignTimeCreatable=False}"
-             d:DesignHeight="600" d:DesignWidth="900">
+             d:DesignHeight="600" d:DesignWidth="900"
+             PreviewKeyDown="UserControl_PreviewKeyDown">
 
     <Grid Margin="15">
         <Grid.ColumnDefinitions>
@@ -23,26 +24,83 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Panel Input Barcode / SKU / Nama -->
+            <!-- Panel Input Barcode / SKU / Nama + AutoComplete Suggestion + Tombol Pengaturan -->
             <Border Grid.Row="0" Background="#E9ECEF" Padding="10" CornerRadius="5" Margin="0,0,0,10">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Text="Scan Barcode / SKU:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+                    <TextBlock Text="Cari / Scan Barcode:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
 
-                    <TextBox Grid.Column="1" Text="{Binding InputBarcode, UpdateSourceTrigger=PropertyChanged}" 
-                             FontSize="14" Padding="6" VerticalAlignment="Center">
-                        <TextBox.InputBindings>
+                    <ComboBox x:Name="cbBarcode"
+                              Grid.Column="1"
+                              IsEditable="True"
+                              IsTextSearchEnabled="False"
+                              StaysOpenOnEdit="True"
+                              SelectedValuePath="Id"
+                              Text="{Binding InputBarcode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              ItemsSource="{Binding DaftarSuggestionProduk}"
+                              SelectedItem="{Binding SelectedProdukSuggestion, Mode=TwoWay}"
+                              IsDropDownOpen="{Binding IsSuggestionOpen, Mode=TwoWay}"
+                              PreviewKeyDown="ComboBox_PreviewKeyDown"
+                              FontSize="14"
+                              Padding="6"
+                              VerticalContentAlignment="Center">
+
+                        <ComboBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding TambahBarangCommand}"/>
-                        </TextBox.InputBindings>
-                    </TextBox>
+                        </ComboBox.InputBindings>
+
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="6,4"/>
+                                <EventSetter Event="PreviewMouseDown" Handler="ComboBoxItem_PreviewMouseDown"/>
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid HorizontalAlignment="Stretch" Background="Transparent">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Nama}" FontWeight="Bold" FontSize="13"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                            <TextBlock Text="SKU: " Foreground="Gray" FontSize="11"/>
+                                            <TextBlock Text="{Binding SKU, TargetNullValue='-'}" Foreground="Gray" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="15,0,0,0">
+                                        <TextBlock Text="{Binding HargaJual, StringFormat=Rp {0:N0}}" 
+                                                   Foreground="#198754" 
+                                                   FontWeight="Bold" 
+                                                   HorizontalAlignment="Right"/>
+                                        <TextBlock Text="{Binding Stok, StringFormat='Stok: {0}'}" 
+                                                   Foreground="#0D6EFD" 
+                                                   FontSize="11" 
+                                                   HorizontalAlignment="Right"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
 
                     <Button Grid.Column="2" Content="Tambah" Command="{Binding TambahBarangCommand}" 
                             Width="80" Margin="10,0,0,0" Padding="6" Background="#FF0275D8" Foreground="White" FontWeight="Bold"/>
+
+                    <!-- Tombol Pengaturan Shortcut -->
+                    <Button Grid.Column="3" Content="⚙️" Command="{Binding BukaPengaturanShortcutCommand}" 
+                            ToolTip="Pengaturan Shortcut Keyboard" Width="38" Margin="8,0,0,0" Padding="6" 
+                            Background="#6C757D" Foreground="White" FontWeight="Bold" FontSize="14"/>
                 </Grid>
             </Border>
 
@@ -80,7 +138,6 @@
                 <Button Content="Reset / Batal Transaksi" Command="{Binding BatalTransaksiCommand}" 
                         Padding="8,5" Background="#FF6C757D" Foreground="White" Margin="0,0,10,0"/>
 
-                <!-- Tombol Hold (Tahan Transaksi) -->
                 <Button Content="⏸️ Hold (Tahan Transaksi)" Command="{Binding HoldTransaksiCommand}" 
                         Padding="10,5" Background="#FFC107" Foreground="#212529" FontWeight="Bold"/>
             </StackPanel>
@@ -121,7 +178,6 @@
                 <TextBlock Grid.Row="0" Text="RINGKASAN PEMBAYARAN" FontSize="14" FontWeight="Bold" Foreground="#6C757D" Margin="0,0,0,15"/>
 
                 <StackPanel Grid.Row="1">
-                    <!-- Display Total Harga -->
                     <Border Background="#212529" CornerRadius="5" Padding="10" Margin="0,0,0,15">
                         <StackPanel>
                             <TextBlock Text="TOTAL BELANJA" Foreground="#ADB5BD" FontSize="12" FontWeight="Bold"/>
@@ -129,12 +185,10 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Input Total Bayar -->
                     <TextBlock Text="Uang Pembayaran (Rp)" FontWeight="Bold" Margin="0,5,0,2"/>
                     <TextBox Text="{Binding TotalBayar, UpdateSourceTrigger=PropertyChanged, StringFormat=N0, TargetNullValue='0'}" 
                              FontSize="20" FontWeight="Bold" Padding="5" Foreground="#0D6EFD" Margin="0,0,0,15"/>
 
-                    <!-- Display Kembalian -->
                     <Border Background="#E9ECEF" CornerRadius="5" Padding="10" Margin="0,0,0,15">
                         <StackPanel>
                             <TextBlock Text="KEMBALIAN" Foreground="#6C757D" FontSize="12" FontWeight="Bold"/>
@@ -143,7 +197,6 @@
                     </Border>
                 </StackPanel>
 
-                <!-- Tombol Proses Bayar -->
                 <Border Grid.Row="3" CornerRadius="5" ClipToBounds="True">
                     <Button Content="PROSES BAYAR (ENTER)" Command="{Binding ProsesBayarCommand}" 
                             Height="50" FontSize="16" FontWeight="Bold" Background="#198754" Foreground="White" VerticalAlignment="Bottom"/>

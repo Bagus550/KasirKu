@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using KasirKu.Data;
@@ -27,6 +28,22 @@ namespace KasirKu.Services
                 .FirstOrDefaultAsync(p =>
                     EF.Functions.Like(p.SKU, cleanKeyword) ||
                     EF.Functions.Like(p.Nama, $"%{cleanKeyword}%"));
+        }
+
+        public async Task<List<Produk>> SearchProductsAsync(string keyword, int limit = 8)
+        {
+            if (string.IsNullOrWhiteSpace(keyword))
+                return new List<Produk>();
+
+            string cleanKeyword = keyword.Trim();
+
+            return await _context.Produk
+                .AsNoTracking()
+                .Where(p =>
+                    EF.Functions.Like(p.SKU, $"%{cleanKeyword}%") ||
+                    EF.Functions.Like(p.Nama, $"%{cleanKeyword}%"))
+                .Take(limit)
+                .ToListAsync();
         }
 
         public async Task<List<Produk>> GetAllProductsAsync()

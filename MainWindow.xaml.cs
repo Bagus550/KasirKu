@@ -1,7 +1,9 @@
-﻿using KasirKu.Models;
+﻿using KasirKu.Data;
+using KasirKu.Models;
 using KasirKu.Services;
 using KasirKu.ViewModels;
 using KasirKu.Views;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Windows;
@@ -52,7 +54,7 @@ namespace KasirKu
                 TabLaporan.Visibility = Visibility.Collapsed;
                 TabProduk.Visibility = Visibility.Collapsed;
                 TabAuditLog.Visibility = Visibility.Collapsed;
-                TabSystemLog.Visibility = Visibility.Collapsed; // Sembunyikan dari Kasir
+                TabSystemLog.Visibility = Visibility.Collapsed;
 
                 TabUtama.SelectedItem = TabKasir;
             }
@@ -122,7 +124,10 @@ namespace KasirKu
             // B. JIKA USER ADALAH ADMIN, UPDATE LOGOUT DIRECTLY
             else if (currentSession != null)
             {
-                using var db = new Data.AppDbContext();
+                // Gunakan IDbContextFactory agar koneksi DB ditangani DI secara aman
+                var dbFactory = App.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+                using var db = dbFactory.CreateDbContext();
+
                 var sessionDb = db.KasirSession.Find(currentSession.Id);
                 if (sessionDb != null && !sessionDb.IsClosed)
                 {

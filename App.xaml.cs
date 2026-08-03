@@ -1,10 +1,11 @@
-﻿using KasirKu.Data; // Pastikan namespace AppDbContext di-import
+﻿using KasirKu.Data;
 using KasirKu.Services;
 using KasirKu.ViewModels;
 using KasirKu.Views;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -27,7 +28,7 @@ namespace KasirKu
             // 2. Register Global Exception Handlers
             SetupGlobalExceptionHandling();
 
-            // 3. INISIALISASI DATABASE AUTOMATIS (Memastikan tabel AuditLog & tabel lainnya dibuat)
+            // 3. Inisialisasi Database
             InitializeDatabase();
 
             // 4. Tampilkan MainWindow
@@ -43,12 +44,13 @@ namespace KasirKu
             try
             {
                 using var scope = ServiceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+                using var db = factory.CreateDbContext();
 
-                // 1. Membuat file database dan seluruh tabel jika belum ada
+                // Membuat file database dan seluruh tabel jika belum ada
                 db.Database.EnsureCreated();
 
-                // 2. [TAMBAHAN] Aktifkan mode WAL (Write-Ahead Logging) & Timeout sekali saat startup
+                // Aktifkan mode WAL & Busy Timeout
                 db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
                 db.Database.ExecuteSqlRaw("PRAGMA busy_timeout=5000;");
             }
@@ -61,21 +63,21 @@ namespace KasirKu
 
         private void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContextFactory<AppDbContext>(options =>
-                options.UseSqlite("Data Source=kasirku.db"));
-
-            string dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
+            // Set Path Database SQLite Absolut
+            string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
             services.AddDbContextFactory<AppDbContext>(options =>
                 options.UseSqlite($"Data Source={dbPath}"));
 
+            // Services
             services.AddSingleton<ILoggerService, LoggerService>();
-
             services.AddSingleton<IPrinterService, PrinterService>();
-
             services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<IShortcutService, ShortcutService>();
+
             services.AddTransient<ITransactionService, TransactionService>();
             services.AddTransient<IProductService, ProductService>();
 
+            // ViewModels
             services.AddTransient<LogViewModel>();
             services.AddTransient<LoginViewModel>();
             services.AddTransient<KasirViewModel>();
@@ -83,26 +85,20 @@ namespace KasirKu
             services.AddTransient<AuditLogViewModel>();
             services.AddTransient<LaporanViewModel>();
 
+            // Views
             services.AddSingleton<MainWindow>();
         }
 
         private void SetupGlobalExceptionHandling()
         {
-            // A. Catch unhandled errors on the WPF UI thread
             DispatcherUnhandledException += App_DispatcherUnhandledException;
-
-            // B. Catch unhandled errors on background/non-UI threads
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
-
-            // C. Catch unhandled errors in async Task / unobserved tasks
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
         }
 
         private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             LogAndShowError(e.Exception, "UI Thread");
-
-            // Tandai exception telah ditangani agar aplikasi TIDAK LANGSUNG CRASH
             e.Handled = true;
         }
 
@@ -117,18 +113,14 @@ namespace KasirKu
         private void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
         {
             LogAndShowError(e.Exception, "Async Task");
-
-            // Tandai exception telah diamati
             e.SetObserved();
         }
 
         private void LogAndShowError(Exception ex, string source)
         {
-            // Gunakan LoggerService untuk catat ke file .log
             var logger = ServiceProvider?.GetService<ILoggerService>();
             logger?.LogError(ex, source);
 
-            // Tampilkan pesan error ramah ke user via IDialogService
             var dialogService = ServiceProvider?.GetService<IDialogService>();
             if (dialogService != null)
             {

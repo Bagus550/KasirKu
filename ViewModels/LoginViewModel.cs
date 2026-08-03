@@ -18,6 +18,10 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private string _password = string.Empty;
 
+        // Properti untuk mengontrol status tampil/sembunyi password
+        [ObservableProperty]
+        private bool _isPasswordVisible;
+
         // Event untuk memberitahu MainWindow/App Controller jika login berhasil
         public event EventHandler<Kasir>? LoginBerhasilEvent;
 
@@ -28,6 +32,12 @@ namespace KasirKu.ViewModels
         public LoginViewModel(IDialogService dialogService)
         {
             _dialogService = dialogService;
+        }
+
+        [RelayCommand]
+        public void TogglePasswordVisibility()
+        {
+            IsPasswordVisible = !IsPasswordVisible;
         }
 
         [RelayCommand]
@@ -86,7 +96,6 @@ namespace KasirKu.ViewModels
                 else
                 {
                     // JIKA KASIR: Wajib Clock-In (Pilih Shift & Input Modal Awal)
-                    // RequestClockInHandler diharapkan memanggil SessionManager.SetSession() secara internal jika berhasil
                     bool isClockInSuccess = RequestClockInHandler?.Invoke(user) ?? false;
 
                     if (isClockInSuccess)
@@ -110,6 +119,7 @@ namespace KasirKu.ViewModels
         {
             Username = string.Empty;
             Password = string.Empty;
+            IsPasswordVisible = false;
         }
     }
 }

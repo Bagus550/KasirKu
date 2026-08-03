@@ -7,7 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace KasirKu.ViewModels
 {
@@ -19,14 +21,17 @@ namespace KasirKu.ViewModels
         public decimal TotalHarga => Items.Sum(x => x.Subtotal);
     }
 
-    public partial class KasirViewModel : ObservableObject
+    public partial class KasirViewModel : ObservableObject, IDisposable
     {
         private readonly ITransactionService _transactionService;
         private readonly IProductService _productService;
         private readonly IDialogService _dialogService;
         private readonly IPrinterService _printerService;
+        private readonly IShortcutService _shortcutService;
 
-        // Properties UI menggunakan CommunityToolkit Source Generator
+        private bool _isUpdatingFromSelection = false;
+        private CancellationTokenSource? _ctsSearch;
+
         [ObservableProperty]
         private ObservableCollection<CartItem> _keranjang = new();
 
@@ -37,6 +42,18 @@ namespace KasirKu.ViewModels
         private string _inputBarcode = string.Empty;
 
         [ObservableProperty]
+        private ObservableCollection<Produk> _daftarSuggestionProduk = new();
+
+        [ObservableProperty]
+        private Produk? _selectedProdukSuggestion;
+
+        [ObservableProperty]
+        private bool _isSuggestionOpen;
+
+        [ObservableProperty]
+        private ShortcutSetting _shortcutConfig;
+
+        [ObservableProperty]
         private decimal _totalHarga;
 
         [ObservableProperty]
@@ -45,20 +62,22 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private decimal _kembalian;
 
-        // Constructor Utama (Semua dependensi di-inject via DI Container)
         public KasirViewModel(
             ITransactionService transactionService,
             IProductService productService,
             IDialogService dialogService,
-            IPrinterService printerService)
+            IPrinterService printerService,
+            IShortcutService shortcutService)
         {
             _transactionService = transactionService;
             _productService = productService;
             _dialogService = dialogService;
             _printerService = printerService;
+            _shortcutService = shortcutService;
+
+            _shortcutConfig = _shortcutService.LoadShortcuts();
 
             SessionManager.SessionCleared += OnSessionCleared;
-
             HitungTotal();
         }
 
@@ -66,14 +85,178 @@ namespace KasirKu.ViewModels
         {
             Keranjang.Clear();
             DaftarHold.Clear();
-            InputBarcode = string.Empty;
+            ResetInputSuggestion();
             TotalBayar = 0;
             HitungTotal();
         }
 
-        partial void OnTotalBayarChanged(decimal value)
+        partial void OnInputBarcodeChanged(string value)
         {
-            HitungKembalian();
+            if (_isUpdatingFromSelection) return;
+
+            _ctsSearch?.Cancel();
+            _ctsSearch = new CancellationTokenSource();
+
+            _ = CariSuggestionProdukAsync(value, _ctsSearch.Token);
+        }
+
+        [RelayCommand]
+        public void BukaPengaturanShortcut()
+        {
+            var dialog = new Views.PengaturanShortcutWindow(_shortcutService)
+            {
+                Owner = Application.Current.MainWindow
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                ShortcutConfig = dialog.CurrentSettings;
+                _dialogService.ShowInfo("Shortcut berhasil diperbarui!", "Pengaturan");
+            }
+        }
+
+        private async Task CariSuggestionProdukAsync(string keyword, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(keyword) || keyword.Length < 2)
+            {
+                TutupSuggestion();
+                return;
+            }
+
+            try
+            {
+                await Task.Delay(250, cancellationToken);
+
+                var list = await _productService.SearchProductsAsync(keyword, limit: 8);
+
+                if (cancellationToken.IsCancellationRequested) return;
+
+                _isUpdatingFromSelection = true;
+
+                DaftarSuggestionProduk.Clear();
+                if (list != null && list.Any())
+                {
+                    foreach (var prod in list)
+                    {
+                        DaftarSuggestionProduk.Add(prod);
+                    }
+                    IsSuggestionOpen = true;
+                }
+                else
+                {
+                    IsSuggestionOpen = false;
+                }
+
+                _isUpdatingFromSelection = false;
+            }
+            catch (OperationCanceledException)
+            {
+                // Disregard canceled searches
+            }
+            catch
+            {
+                TutupSuggestion();
+            }
+        }
+
+        partial void OnSelectedProdukSuggestionChanged(Produk? value)
+        {
+            if (_isUpdatingFromSelection) return;
+
+            if (value != null)
+            {
+                _isUpdatingFromSelection = true;
+                InputBarcode = value.Nama;
+                _isUpdatingFromSelection = false;
+            }
+        }
+
+        [RelayCommand]
+        public void PilihSuggestion(Produk? produk)
+        {
+            if (produk == null) return;
+
+            TambahProdukKeKeranjang(produk);
+            ResetInputSuggestion();
+        }
+
+        [RelayCommand]
+        public async Task TambahBarangAsync()
+        {
+            if (SelectedProdukSuggestion != null)
+            {
+                TambahProdukKeKeranjang(SelectedProdukSuggestion);
+                ResetInputSuggestion();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(InputBarcode)) return;
+
+            try
+            {
+                var produk = await _productService.GetProductBySkuOrNameAsync(InputBarcode);
+
+                if (produk == null)
+                {
+                    _dialogService.ShowWarning($"Produk dengan SKU/Nama '{InputBarcode}' tidak ditemukan!", "Tidak Ditemukan");
+                    ResetInputSuggestion();
+                    return;
+                }
+
+                TambahProdukKeKeranjang(produk);
+                ResetInputSuggestion();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"Terjadi kesalahan: {ex.Message}", "Error Scan");
+            }
+        }
+
+        private void TutupSuggestion()
+        {
+            _isUpdatingFromSelection = true;
+            DaftarSuggestionProduk.Clear();
+            SelectedProdukSuggestion = null;
+            IsSuggestionOpen = false;
+            _isUpdatingFromSelection = false;
+        }
+
+        private void ResetInputSuggestion()
+        {
+            _isUpdatingFromSelection = true;
+            InputBarcode = string.Empty;
+            SelectedProdukSuggestion = null;
+            DaftarSuggestionProduk.Clear();
+            IsSuggestionOpen = false;
+            _isUpdatingFromSelection = false;
+        }
+
+        private void TambahProdukKeKeranjang(Produk produk)
+        {
+            if (produk.Stok <= 0)
+            {
+                _dialogService.ShowWarning($"Stok produk '{produk.Nama}' habis!", "Stok Habis");
+                return;
+            }
+
+            var itemInCart = Keranjang.FirstOrDefault(c => c.Produk != null && c.Produk.Id == produk.Id);
+            if (itemInCart != null)
+            {
+                if (itemInCart.Jumlah + 1 > produk.Stok)
+                {
+                    _dialogService.ShowWarning($"Stok '{produk.Nama}' tidak mencukupi! Sisa stok: {produk.Stok}", "Stok Terbatas");
+                    return;
+                }
+                itemInCart.Jumlah++;
+            }
+            else
+            {
+                var newItem = new CartItem(produk, 1);
+                newItem.PropertyChanged += (s, e) => HitungTotal();
+                Keranjang.Add(newItem);
+            }
+
+            HitungTotal();
         }
 
         [RelayCommand]
@@ -117,58 +300,11 @@ namespace KasirKu.ViewModels
             HitungTotal();
         }
 
-        // Command: Scan / Tambah Barang dari Input Barcode
-        [RelayCommand]
-        public async Task TambahBarangAsync()
+        partial void OnTotalBayarChanged(decimal value)
         {
-            if (string.IsNullOrWhiteSpace(InputBarcode)) return;
-
-            try
-            {
-                var produk = await _productService.GetProductBySkuOrNameAsync(InputBarcode);
-
-                if (produk == null)
-                {
-                    _dialogService.ShowWarning($"Produk dengan SKU/Nama '{InputBarcode}' tidak ditemukan!", "Tidak Ditemukan");
-                    InputBarcode = string.Empty;
-                    return;
-                }
-
-                if (produk.Stok <= 0)
-                {
-                    _dialogService.ShowWarning($"Stok produk '{produk.Nama}' habis!", "Stok Habis");
-                    InputBarcode = string.Empty;
-                    return;
-                }
-
-                var itemInCart = Keranjang.FirstOrDefault(c => c.Produk != null && c.Produk.Id == produk.Id);
-                if (itemInCart != null)
-                {
-                    if (itemInCart.Jumlah + 1 > produk.Stok)
-                    {
-                        _dialogService.ShowWarning($"Stok '{produk.Nama}' tidak mencukupi! Sisa stok: {produk.Stok}", "Stok Terbatas");
-                        InputBarcode = string.Empty;
-                        return;
-                    }
-                    itemInCart.Jumlah++;
-                }
-                else
-                {
-                    var newItem = new CartItem(produk, 1);
-                    newItem.PropertyChanged += (s, e) => HitungTotal();
-                    Keranjang.Add(newItem);
-                }
-
-                InputBarcode = string.Empty;
-                HitungTotal();
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError($"Terjadi kesalahan: {ex.Message}", "Error Scan");
-            }
+            HitungKembalian();
         }
 
-        // Command: Hapus Item dari Keranjang
         [RelayCommand]
         public void HapusItem(CartItem? item)
         {
@@ -179,7 +315,6 @@ namespace KasirKu.ViewModels
             }
         }
 
-        // Command: Reset / Batalkan Seluruh Transaksi
         [RelayCommand]
         public void BatalTransaksi()
         {
@@ -208,7 +343,6 @@ namespace KasirKu.ViewModels
                 int kasirId = SessionManager.CurrentKasir?.Id ?? 1;
                 int? sessionId = SessionManager.CurrentSession?.Id;
 
-                // Process Transaction via Service (Sudah menggunakan DbContextFactory / WAL)
                 var result = await _transactionService.ProcessTransactionAsync(
                     listItems,
                     bayar,
@@ -218,7 +352,6 @@ namespace KasirKu.ViewModels
 
                 if (result.IsSuccess)
                 {
-                    // Cetak Struk Async (NullPrinterService saat dev / PrinterService saat ada fisik)
                     if (result.TransaksiData != null)
                     {
                         _ = _printerService.CetakStrukAsync(result.TransaksiData);
@@ -256,8 +389,15 @@ namespace KasirKu.ViewModels
         private void ResetKeranjang()
         {
             Keranjang.Clear();
+            ResetInputSuggestion();
             TotalBayar = 0;
             HitungTotal();
+        }
+
+        public void Dispose()
+        {
+            _ctsSearch?.Dispose();
+            SessionManager.SessionCleared -= OnSessionCleared;
         }
     }
 }
