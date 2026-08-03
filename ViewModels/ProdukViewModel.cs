@@ -38,7 +38,6 @@ namespace KasirKu.ViewModels
             try
             {
                 using var db = await _contextFactory.CreateDbContextAsync();
-                await db.Database.EnsureCreatedAsync();
 
                 var query = db.Produk.AsQueryable();
 
