@@ -20,10 +20,12 @@ namespace KasirKu.Services
     public class PrinterService : IPrinterService
     {
         private readonly IDialogService _dialogService;
+        private readonly ILoggerService? _logger;
 
-        public PrinterService(IDialogService dialogService)
+        public PrinterService(IDialogService dialogService, ILoggerService? logger = null)
         {
             _dialogService = dialogService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -75,6 +77,7 @@ namespace KasirKu.Services
                 }
                 catch (Exception ex)
                 {
+                    _logger?.LogError(ex, "Gagal mencetak struk nota");
                     return (Success: false, ErrorMessage: ex.Message);
                 }
             });

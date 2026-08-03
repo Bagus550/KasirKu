@@ -35,26 +35,23 @@ namespace KasirKu.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Dummy object hanya untuk dipakai parameter HashPassword
-            var dummyAdmin = new Kasir { Id = 1, Username = "admin" };
-            var dummyKasir = new Kasir { Id = 2, Username = "kasir" };
-
-            // 1. Seed Data Kasir Awal dengan PASSWORD HASHED (Priority 1)
+            // 1. Seed Data Kasir Awal dengan String Hash Password Statis
+            // Password "admin123" dan "kasir123" telah di-hash menjadi nilai deterministik
             modelBuilder.Entity<Kasir>().HasData(
                 new Kasir
                 {
                     Id = 1,
-                    Nama = "Bagus Setiawan",
-                    Username = "Bagus",
-                    PasswordHash = PasswordHasherHelper.HashPassword(dummyAdmin, "admin123"),
+                    Nama = "Admin KasirKu",
+                    Username = "Admin",
+                    PasswordHash = "AQAAAAIAAYagAAAAEO0srbQ83jUrJaGs7LXC/T4XBo4K0PI7tP+OoGJejP6W0lq58QnE0kSeaBXeKMxztw==", // Hash Statis Admin
                     Role = "Admin"
                 },
                 new Kasir
                 {
                     Id = 2,
-                    Nama = "Anton Wijaya",
-                    Username = "Anton",
-                    PasswordHash = PasswordHasherHelper.HashPassword(dummyKasir, "kasir123"),
+                    Nama = "Kasir",
+                    Username = "Kasir",
+                    PasswordHash = "AQAAAAIAAYagAAAAEOeir4tK5zQjyy/KQbzKV4ccC5RwGF/rpp1ODlwWGg7bbImiZhL2O9OdDsaj05pJOw==", // Hash Statis Kasir
                     Role = "Kasir"
                 }
             );

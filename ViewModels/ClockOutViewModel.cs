@@ -3,13 +3,16 @@ using CommunityToolkit.Mvvm.Input;
 using KasirKu.Data;
 using KasirKu.Models;
 using KasirKu.Services;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace KasirKu.ViewModels
 {
     public partial class ClockOutViewModel : ObservableObject
     {
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IDialogService _dialogService;
         private readonly KasirSession _sessionAktif;
         private readonly Action _onSuccess;
@@ -27,7 +30,7 @@ namespace KasirKu.ViewModels
         private decimal _totalOmzetTunai;
 
         [ObservableProperty]
-        private decimal _totalEkspektasi; // Modal Awal + Total Penjualan
+        private decimal _totalEkspektasi;
 
         [ObservableProperty]
         private string _totalAktifFisikText = "0";
@@ -38,31 +41,30 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private string _catatan = string.Empty;
 
-        public ClockOutViewModel(IDialogService dialogService, KasirSession session, Action onSuccess)
+        public ClockOutViewModel(IDbContextFactory<AppDbContext> contextFactory, IDialogService dialogService, KasirSession session, Action onSuccess)
         {
+            _contextFactory = contextFactory;
             _dialogService = dialogService;
             _sessionAktif = session;
             _onSuccess = onSuccess;
 
             NamaKasir = SessionManager.CurrentKasir?.Nama ?? "-";
-            HitungRingkasanShift();
+            _ = HitungRingkasanShiftAsync();
         }
 
-        private void HitungRingkasanShift()
+        private async Task HitungRingkasanShiftAsync()
         {
             try
             {
-                using var db = new AppDbContext();
+                using var db = await _contextFactory.CreateDbContextAsync();
 
-                // Load data shift dari DB
-                var shift = db.Shift.Find(_sessionAktif.ShiftId);
+                var shift = await db.Shift.FindAsync(_sessionAktif.ShiftId);
                 NamaShift = shift?.NamaShift ?? "-";
                 ModalAwal = _sessionAktif.ModalAwal;
 
-                // Menggunakan DbSet 'Transaksi' sesuai schema KasirKu
-                TotalOmzetTunai = db.Transaksi
+                TotalOmzetTunai = await db.Transaksi
                     .Where(t => t.Tanggal >= _sessionAktif.WaktuLogin)
-                    .Sum(t => (decimal?)t.TotalHarga) ?? 0;
+                    .SumAsync(t => (decimal?)t.TotalHarga) ?? 0;
 
                 TotalEkspektasi = ModalAwal + TotalOmzetTunai;
                 HitungSelisih();
@@ -91,7 +93,7 @@ namespace KasirKu.ViewModels
         }
 
         [RelayCommand]
-        public void SelesaikanShift()
+        public async Task SelesaikanShiftAsync()
         {
             if (!decimal.TryParse(TotalAktifFisikText, out decimal totalFisik) || totalFisik < 0)
             {
@@ -99,18 +101,16 @@ namespace KasirKu.ViewModels
                 return;
             }
 
-            // Minta konfirmasi sebelum mengakhiri shift
             bool confirm = _dialogService.ShowConfirmation("Apakah Anda yakin ingin menyelesaikan shift dan melakukan Clock-Out?", "Konfirmasi Clock-Out");
             if (!confirm) return;
 
             try
             {
-                using var db = new AppDbContext();
-                var sessionDb = db.KasirSession.Find(_sessionAktif.Id);
+                using var db = await _contextFactory.CreateDbContextAsync();
+                var sessionDb = await db.KasirSession.FindAsync(_sessionAktif.Id);
 
                 if (sessionDb != null)
                 {
-                    // Update ke properti KasirSession yang sesuai
                     sessionDb.WaktuLogout = DateTime.Now;
                     sessionDb.TotalTunaiSistem = TotalOmzetTunai;
                     sessionDb.TotalTunaiFisik = totalFisik;
@@ -118,7 +118,6 @@ namespace KasirKu.ViewModels
                     sessionDb.CatatanSelisih = Catatan;
                     sessionDb.IsClosed = true;
 
-                    // Tambahkan Audit Log
                     db.AuditLog.Add(new AuditLog
                     {
                         KasirId = sessionDb.KasirId,
@@ -127,7 +126,7 @@ namespace KasirKu.ViewModels
                         Keterangan = $"Selesai Shift ({NamaShift}). Modal Awal: Rp {ModalAwal:N0}, Omzet Tunai: Rp {TotalOmzetTunai:N0}, Uang Laci: Rp {totalFisik:N0}, Selisih: Rp {Selisih:N0}"
                     });
 
-                    db.SaveChanges();
+                    await db.SaveChangesAsync();
                 }
 
                 _dialogService.ShowInfo("Berhasil menyelesaikan shift. Terima kasih!", "Informasi");

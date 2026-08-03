@@ -47,12 +47,17 @@
                     <views:ProdukView x:Name="ViewProduk"/>
                 </TabItem>
 
+                <!-- TAB BARU: Kelola Akun Kasir & Admin (Khusus Admin) -->
+                <TabItem x:Name="TabKelolaAkun" Header=" 👤 Kelola Akun " FontSize="14" FontWeight="Bold">
+                    <views:KelolaAkunView x:Name="ViewKelolaAkun" />
+                </TabItem>
+
                 <!-- Tab 4: Audit Log & Sesi Kasir -->
                 <TabItem x:Name="TabAuditLog" Header="📋 Audit Log &amp; Sesi Kasir" FontSize="14" FontWeight="Bold">
                     <views:AuditLogView x:Name="ViewAuditLog" />
                 </TabItem>
 
-                <!-- Tab 5: System Log Viewer (Khusus Admin / Error Tracing) -->
+                <!-- Tab 5: System Log Viewer -->
                 <TabItem x:Name="TabSystemLog" Header="⚙️ System Error Log" FontSize="14" FontWeight="Bold">
                     <views:LogView x:Name="ViewSystemLog" />
                 </TabItem>

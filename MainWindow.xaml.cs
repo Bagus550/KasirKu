@@ -27,15 +27,17 @@ namespace KasirKu
             // 3. Sambungkan delegate ClockInHandler ke View ClockInWindow
             loginVm.RequestClockInHandler = (kasir) =>
             {
+                var contextFactory = App.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
                 var dialogService = App.ServiceProvider.GetRequiredService<IDialogService>();
-                var clockInWin = new ClockInWindow(kasir, dialogService)
+
+                var clockInWin = new ClockInWindow(contextFactory, dialogService, kasir)
                 {
                     Owner = this
                 };
                 return clockInWin.ShowDialog();
             };
 
-            // 4. Memicu Auto Refresh Laporan saat Tab Laporan dipilih/diklik
+            // 4. Memicu Auto Refresh saat Tab dipilih/diklik
             TabUtama.SelectionChanged += TabUtama_SelectionChanged;
         }
 
@@ -53,6 +55,7 @@ namespace KasirKu
                 TabKasir.Visibility = Visibility.Visible;
                 TabLaporan.Visibility = Visibility.Collapsed;
                 TabProduk.Visibility = Visibility.Collapsed;
+                TabKelolaAkun.Visibility = Visibility.Collapsed;
                 TabAuditLog.Visibility = Visibility.Collapsed;
                 TabSystemLog.Visibility = Visibility.Collapsed;
 
@@ -60,18 +63,22 @@ namespace KasirKu
             }
             else
             {
+                // Assign ViewModel untuk fitur Admin
                 var laporanVm = App.ServiceProvider.GetRequiredService<LaporanViewModel>();
                 ViewLaporan.DataContext = laporanVm;
 
                 ViewProduk.DataContext = App.ServiceProvider.GetRequiredService<ProdukViewModel>();
+                ViewKelolaAkun.DataContext = App.ServiceProvider.GetRequiredService<KelolaAkunViewModel>(); // Assign KelolaAkunVM
                 ViewAuditLog.DataContext = App.ServiceProvider.GetRequiredService<AuditLogViewModel>();
 
                 var logVm = App.ServiceProvider.GetRequiredService<LogViewModel>();
                 ViewSystemLog.DataContext = logVm;
 
+                // Atur Visibilitas Tab
                 TabKasir.Visibility = Visibility.Collapsed;
                 TabLaporan.Visibility = Visibility.Visible;
                 TabProduk.Visibility = Visibility.Visible;
+                TabKelolaAkun.Visibility = Visibility.Visible; // Tampilkan untuk Admin
                 TabAuditLog.Visibility = Visibility.Visible;
                 TabSystemLog.Visibility = Visibility.Visible;
 
@@ -89,6 +96,10 @@ namespace KasirKu
             {
                 await laporanVm.MuatLaporanAsync();
             }
+            else if (TabUtama.SelectedItem == TabKelolaAkun && ViewKelolaAkun.DataContext is KelolaAkunViewModel kelolaAkunVm)
+            {
+                await kelolaAkunVm.LoadDataAsync();
+            }
             else if (TabUtama.SelectedItem == TabAuditLog && ViewAuditLog.DataContext is AuditLogViewModel auditVm)
             {
                 await auditVm.MuatLogAsync();
@@ -104,11 +115,12 @@ namespace KasirKu
             var currentKasir = SessionManager.CurrentKasir;
             var currentSession = SessionManager.CurrentSession;
             var dialogService = App.ServiceProvider.GetRequiredService<IDialogService>();
+            var contextFactory = App.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
 
             // A. JIKA USER ADALAH KASIR, TAMPILKAN POPUP CLOCK-OUT
             if (currentKasir != null && currentKasir.Role?.Equals("Kasir", StringComparison.OrdinalIgnoreCase) == true && currentSession != null)
             {
-                var clockOutWin = new ClockOutWindow(currentSession, dialogService)
+                var clockOutWin = new ClockOutWindow(contextFactory, dialogService, currentSession)
                 {
                     Owner = this
                 };
@@ -135,8 +147,7 @@ namespace KasirKu
 
                 if (currentSession != null)
                 {
-                    var dbFactory = App.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
-                    using var db = dbFactory.CreateDbContext();
+                    using var db = contextFactory.CreateDbContext();
 
                     var sessionDb = db.KasirSession.Find(currentSession.Id);
                     if (sessionDb != null && !sessionDb.IsClosed)

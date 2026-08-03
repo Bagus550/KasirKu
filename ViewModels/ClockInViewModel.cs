@@ -3,14 +3,17 @@ using CommunityToolkit.Mvvm.Input;
 using KasirKu.Data;
 using KasirKu.Models;
 using KasirKu.Services;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace KasirKu.ViewModels
 {
     public partial class ClockInViewModel : ObservableObject
     {
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IDialogService _dialogService;
         private readonly Kasir _kasirAktif;
         private readonly Action _onSuccess;
@@ -26,25 +29,26 @@ namespace KasirKu.ViewModels
 
         [ObservableProperty]
         private string _modalAwalText = "200000";
-        public ClockInViewModel(IDialogService dialogService, Kasir kasir, Action onSuccess)
+
+        public ClockInViewModel(IDbContextFactory<AppDbContext> contextFactory, IDialogService dialogService, Kasir kasir, Action onSuccess)
         {
+            _contextFactory = contextFactory;
             _dialogService = dialogService;
             _kasirAktif = kasir;
             _onSuccess = onSuccess;
             NamaKasir = kasir.Nama;
 
-            MuatShift();
+            _ = MuatShiftAsync();
         }
 
-        private void MuatShift()
+        private async Task MuatShiftAsync()
         {
             try
             {
-                using var db = new AppDbContext();
-                var list = db.Shift.Where(s => s.IsAktif).ToList();
+                using var db = await _contextFactory.CreateDbContextAsync();
+                var list = await db.Shift.Where(s => s.IsAktif).ToListAsync();
                 DaftarShift = new ObservableCollection<Shift>(list);
 
-                // Deteksi otomatis shift berdasarkan jam sekarang
                 var skrg = DateTime.Now.TimeOfDay;
                 ShiftTerpilih = list.FirstOrDefault(s => skrg >= s.JamMulai && skrg <= s.JamSelesai) ?? list.FirstOrDefault();
             }
@@ -55,7 +59,7 @@ namespace KasirKu.ViewModels
         }
 
         [RelayCommand]
-        public void MulaiShift()
+        public async Task MulaiShiftAsync()
         {
             if (ShiftTerpilih == null)
             {
@@ -71,9 +75,8 @@ namespace KasirKu.ViewModels
 
             try
             {
-                using var db = new AppDbContext();
+                using var db = await _contextFactory.CreateDbContextAsync();
 
-                // Buat KasirSession Baru
                 var session = new KasirSession
                 {
                     KasirId = _kasirAktif.Id,
@@ -85,7 +88,6 @@ namespace KasirKu.ViewModels
 
                 db.KasirSession.Add(session);
 
-                // Catat Log Audit Login
                 db.AuditLog.Add(new AuditLog
                 {
                     KasirId = _kasirAktif.Id,
@@ -94,9 +96,8 @@ namespace KasirKu.ViewModels
                     Keterangan = $"Login di {ShiftTerpilih.NamaShift} dengan Modal Awal Rp {modalAwal:N0}"
                 });
 
-                db.SaveChanges();
+                await db.SaveChangesAsync();
 
-                // Set State Sesi Global
                 SessionManager.SetSession(_kasirAktif, session);
 
                 _onSuccess?.Invoke();

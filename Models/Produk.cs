@@ -15,6 +15,9 @@ namespace KasirKu.Models
         public int Stok { get; set; }
         public int StokMinimum { get; set; } = 0;
 
+        [Timestamp]
+        public byte[]? RowVersion { get; set; }
+
         public override string ToString() => Nama;
     }
 }

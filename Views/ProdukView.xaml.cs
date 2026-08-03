@@ -10,11 +10,11 @@ namespace KasirKu.Views
             InitializeComponent();
 
             // Otomatis refresh data dari DB setiap kali tab Data Produk dibuka
-            this.Loaded += (s, e) =>
+            this.Loaded += async (s, e) =>
             {
                 if (DataContext is ProdukViewModel vm)
                 {
-                    vm.MuatDataProduk();
+                    await vm.MuatDataProdukAsync();
                 }
             };
         }

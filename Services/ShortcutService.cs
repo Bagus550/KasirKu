@@ -14,6 +14,12 @@ namespace KasirKu.Services
     public class ShortcutService : IShortcutService
     {
         private readonly string _filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "shortcut_config.json");
+        private readonly ILoggerService _logger;
+
+        public ShortcutService(ILoggerService logger)
+        {
+            _logger = logger;
+        }
 
         public ShortcutSetting LoadShortcuts()
         {
@@ -25,7 +31,10 @@ namespace KasirKu.Services
                     return JsonSerializer.Deserialize<ShortcutSetting>(json) ?? new ShortcutSetting();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Gagal membaca file shortcut_config.json");
+            }
 
             return new ShortcutSetting(); // Default
         }
@@ -35,10 +44,13 @@ namespace KasirKu.Services
             try
             {
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-                File.ReadAllText(_filePath);
+
                 File.WriteAllText(_filePath, json);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Gagal menyimpan shortcut_config.json");
+            }
         }
     }
 }

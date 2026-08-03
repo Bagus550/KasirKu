@@ -3,14 +3,17 @@ using CommunityToolkit.Mvvm.Input;
 using KasirKu.Data;
 using KasirKu.Models;
 using KasirKu.Services;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace KasirKu.ViewModels
 {
     public partial class ProdukViewModel : ObservableObject
     {
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IDialogService _dialogService;
 
         [ObservableProperty]
@@ -22,20 +25,20 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private string _searchKeyword = string.Empty;
 
-        // Constructor Utama: Menerima IDialogService dari DI Container
-        public ProdukViewModel(IDialogService dialogService)
+        public ProdukViewModel(IDbContextFactory<AppDbContext> contextFactory, IDialogService dialogService)
         {
+            _contextFactory = contextFactory;
             _dialogService = dialogService;
-            MuatDataProduk();
+            _ = MuatDataProdukAsync();
         }
 
         [RelayCommand]
-        public void MuatDataProduk()
+        public async Task MuatDataProdukAsync()
         {
             try
             {
-                using var db = new AppDbContext();
-                db.Database.EnsureCreated();
+                using var db = await _contextFactory.CreateDbContextAsync();
+                await db.Database.EnsureCreatedAsync();
 
                 var query = db.Produk.AsQueryable();
 
@@ -46,7 +49,8 @@ namespace KasirKu.ViewModels
                                              (p.SKU != null && p.SKU.ToLower().Contains(keyword)));
                 }
 
-                DaftarProduk = new ObservableCollection<Produk>(query.ToList());
+                var list = await query.ToListAsync();
+                DaftarProduk = new ObservableCollection<Produk>(list);
             }
             catch (Exception ex)
             {
@@ -55,7 +59,7 @@ namespace KasirKu.ViewModels
         }
 
         [RelayCommand]
-        public void SimpanProduk()
+        public async Task SimpanProdukAsync()
         {
             if (SelectedProduk == null)
                 return;
@@ -74,15 +78,13 @@ namespace KasirKu.ViewModels
 
             try
             {
-                using var db = new AppDbContext();
+                using var db = await _contextFactory.CreateDbContextAsync();
                 int currentKasirId = SessionManager.CurrentKasir?.Id ?? 0;
 
                 if (SelectedProduk.Id == 0)
                 {
-                    // 1. TAMBAH PRODUK BARU
                     db.Produk.Add(SelectedProduk);
 
-                    // Catat Audit Log Tambah Produk
                     db.AuditLog.Add(new AuditLog
                     {
                         KasirId = currentKasirId,
@@ -94,12 +96,10 @@ namespace KasirKu.ViewModels
                 }
                 else
                 {
-                    // 2. EDIT PRODUK
-                    var produkDb = db.Produk.Find(SelectedProduk.Id);
+                    var produkDb = await db.Produk.FindAsync(SelectedProduk.Id);
 
                     if (produkDb != null)
                     {
-                        // Rincian histori sebelum diedit untuk dicatat di log
                         string infoPerubahan = $"Mengubah produk '{produkDb.Nama}' (ID: {produkDb.Id}). " +
                                                $"Harga Jual: Rp{produkDb.HargaJual:N0} -> Rp{SelectedProduk.HargaJual:N0}, " +
                                                $"Stok: {produkDb.Stok} -> {SelectedProduk.Stok}";
@@ -112,7 +112,6 @@ namespace KasirKu.ViewModels
                         produkDb.Stok = SelectedProduk.Stok;
                         produkDb.StokMinimum = SelectedProduk.StokMinimum;
 
-                        // Catat Audit Log Edit Produk
                         db.AuditLog.Add(new AuditLog
                         {
                             KasirId = currentKasirId,
@@ -128,11 +127,11 @@ namespace KasirKu.ViewModels
                     }
                 }
 
-                db.SaveChanges();
+                await db.SaveChangesAsync();
 
                 _dialogService.ShowInfo("Data produk berhasil disimpan!", "Sukses");
                 ResetForm();
-                MuatDataProduk();
+                await MuatDataProdukAsync();
             }
             catch (Exception ex)
             {
@@ -141,7 +140,7 @@ namespace KasirKu.ViewModels
         }
 
         [RelayCommand]
-        public void HapusProduk(Produk? produk)
+        public async Task HapusProdukAsync(Produk? produk)
         {
             if (produk == null)
                 return;
@@ -156,15 +155,13 @@ namespace KasirKu.ViewModels
 
             try
             {
-                using var db = new AppDbContext();
+                using var db = await _contextFactory.CreateDbContextAsync();
 
-                // Cari entitas terlebih dahulu sebelum menghapus
-                var produkDb = db.Produk.Find(produk.Id);
+                var produkDb = await db.Produk.FindAsync(produk.Id);
                 if (produkDb != null)
                 {
                     db.Produk.Remove(produkDb);
 
-                    // Catat Audit Log Hapus Produk
                     db.AuditLog.Add(new AuditLog
                     {
                         KasirId = SessionManager.CurrentKasir?.Id ?? 0,
@@ -173,10 +170,10 @@ namespace KasirKu.ViewModels
                         Keterangan = $"Menghapus produk '{produkDb.Nama}' (SKU: {produkDb.SKU ?? "-"}, Stok Akhir: {produkDb.Stok}) dari sistem."
                     });
 
-                    db.SaveChanges();
+                    await db.SaveChangesAsync();
 
                     _dialogService.ShowInfo("Produk berhasil dihapus!", "Sukses");
-                    MuatDataProduk();
+                    await MuatDataProdukAsync();
                 }
             }
             catch (Exception ex)

@@ -3,13 +3,16 @@ using CommunityToolkit.Mvvm.Input;
 using KasirKu.Data;
 using KasirKu.Models;
 using KasirKu.Services;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace KasirKu.ViewModels
 {
     public partial class LoginViewModel : ObservableObject
     {
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IDialogService _dialogService;
 
         [ObservableProperty]
@@ -18,19 +21,16 @@ namespace KasirKu.ViewModels
         [ObservableProperty]
         private string _password = string.Empty;
 
-        // Properti untuk mengontrol status tampil/sembunyi password
         [ObservableProperty]
         private bool _isPasswordVisible;
 
-        // Event untuk memberitahu MainWindow/App Controller jika login berhasil
         public event EventHandler<Kasir>? LoginBerhasilEvent;
 
-        // Action callback untuk membuka window ClockIn jika kasir biasa login (decoupling dari View)
         public Func<Kasir, bool?>? RequestClockInHandler { get; set; }
 
-        // Constructor Utama: Menerima IDialogService dari DI Container
-        public LoginViewModel(IDialogService dialogService)
+        public LoginViewModel(IDbContextFactory<AppDbContext> contextFactory, IDialogService dialogService)
         {
+            _contextFactory = contextFactory;
             _dialogService = dialogService;
         }
 
@@ -41,7 +41,7 @@ namespace KasirKu.ViewModels
         }
 
         [RelayCommand]
-        public void Login()
+        public async Task LoginAsync()
         {
             if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
             {
@@ -51,12 +51,10 @@ namespace KasirKu.ViewModels
 
             try
             {
-                using var db = new AppDbContext();
+                using var db = await _contextFactory.CreateDbContextAsync();
 
-                // 1. Cari user hanya berdasarkan Username
-                var user = db.Kasir.FirstOrDefault(k => k.Username.ToLower() == Username.Trim().ToLower());
+                var user = await db.Kasir.FirstOrDefaultAsync(k => k.Username.ToLower() == Username.Trim().ToLower());
 
-                // 2. Verifikasi Password dengan PasswordHasherHelper
                 if (user == null || !PasswordHasherHelper.VerifyPassword(user, user.PasswordHash, Password))
                 {
                     _dialogService.ShowError("Username atau Password salah!", "Login Gagal");
@@ -67,7 +65,6 @@ namespace KasirKu.ViewModels
 
                 if (user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
                 {
-                    // JIKA ADMIN: Bypass ClockIn & Buat Session Khusus Admin
                     var adminSession = new KasirSession
                     {
                         KasirId = user.Id,
@@ -87,15 +84,13 @@ namespace KasirKu.ViewModels
                         Keterangan = "Admin Login Sistem"
                     });
 
-                    db.SaveChanges();
+                    await db.SaveChangesAsync();
 
-                    // Simpan sesi ke SessionManager
                     SessionManager.SetSession(user, adminSession);
                     LoginBerhasilEvent?.Invoke(this, user);
                 }
                 else
                 {
-                    // JIKA KASIR: Wajib Clock-In (Pilih Shift & Input Modal Awal)
                     bool isClockInSuccess = RequestClockInHandler?.Invoke(user) ?? false;
 
                     if (isClockInSuccess)
@@ -104,7 +99,6 @@ namespace KasirKu.ViewModels
                     }
                     else
                     {
-                        // Jika Batal Clock-In, pastikan sesi dibersihkan
                         SessionManager.ClearSession();
                     }
                 }

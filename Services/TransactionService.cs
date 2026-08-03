@@ -28,10 +28,12 @@ namespace KasirKu.Services
     public class TransactionService : ITransactionService
     {
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
+        private readonly ILoggerService? _logger;
 
-        public TransactionService(IDbContextFactory<AppDbContext> contextFactory)
+        public TransactionService(IDbContextFactory<AppDbContext> contextFactory, ILoggerService? logger = null)
         {
             _contextFactory = contextFactory;
+            _logger = logger;
         }
 
         public async Task<TransactionResult> ProcessTransactionAsync(
@@ -59,7 +61,7 @@ namespace KasirKu.Services
 
             decimal kembalian = totalBayar - totalHarga;
 
-            // 2. Eksekusi Database Operation (Tanpa Task.Run karena I/O DB sudah Asynchronous)
+            // 2. Eksekusi Database Operation dengan Concurrency Control
             try
             {
                 await using var context = await _contextFactory.CreateDbContextAsync();
@@ -90,7 +92,7 @@ namespace KasirKu.Services
                         return new TransactionResult
                         {
                             IsSuccess = false,
-                            Message = $"Stok '{produk.Nama}' tidak mencukupi. Sisa stok: {produk.Stok}"
+                            Message = $"Stok '{produk.Nama}' tidak mencukupi. Sisa stok saat ini: {produk.Stok}"
                         };
                     }
 
@@ -151,8 +153,18 @@ namespace KasirKu.Services
                     TransaksiData = transaksi
                 };
             }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger?.LogError(ex, "Bentrokan konkurensi stok saat transaksi.");
+                return new TransactionResult
+                {
+                    IsSuccess = false,
+                    Message = "Gagal memproses transaksi: Stok produk telah diperbarui oleh pengguna/transaksi lain secara bersamaan. Silakan coba lagi."
+                };
+            }
             catch (Exception ex)
             {
+                _logger?.LogError(ex, "Gagal memproses transaksi");
                 var innerMsg = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
                 return new TransactionResult
                 {

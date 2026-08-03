@@ -1,6 +1,8 @@
-﻿using KasirKu.Models;
+﻿using KasirKu.Data;
+using KasirKu.Models;
 using KasirKu.Services;
 using KasirKu.ViewModels;
+using Microsoft.EntityFrameworkCore;
 using System.Windows;
 
 namespace KasirKu.Views
@@ -9,12 +11,11 @@ namespace KasirKu.Views
     {
         public bool IsClockOutSuccess { get; private set; } = false;
 
-        public ClockOutWindow(KasirSession session, IDialogService dialogService)
+        public ClockOutWindow(IDbContextFactory<AppDbContext> contextFactory, IDialogService dialogService, KasirSession session)
         {
             InitializeComponent();
 
-            // Mengirim 3 parameter sesuai signature ClockOutViewModel
-            DataContext = new ClockOutViewModel(dialogService, session, () =>
+            DataContext = new ClockOutViewModel(contextFactory, dialogService, session, () =>
             {
                 IsClockOutSuccess = true;
                 DialogResult = true;

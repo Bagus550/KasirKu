@@ -1,4 +1,5 @@
 ﻿using KasirKu.Data;
+using KasirKu.Models;
 using KasirKu.Services;
 using KasirKu.ViewModels;
 using KasirKu.Views;
@@ -28,7 +29,7 @@ namespace KasirKu
             // 2. Register Global Exception Handlers
             SetupGlobalExceptionHandling();
 
-            // 3. Inisialisasi Database
+            // 3. Inisialisasi Database (Jalankan Migrasi & PRAGMA)
             InitializeDatabase();
 
             // 4. Tampilkan MainWindow
@@ -47,17 +48,34 @@ namespace KasirKu
                 var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
                 using var db = factory.CreateDbContext();
 
-                // Membuat file database dan seluruh tabel jika belum ada
-                db.Database.EnsureCreated();
+                // Jalankan Migrasi
+                db.Database.Migrate();
 
-                // Aktifkan mode WAL & Busy Timeout
+                // Jalankan PRAGMA SQLite
                 db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
                 db.Database.ExecuteSqlRaw("PRAGMA busy_timeout=5000;");
+
+                var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Kasir>();
+
+                var admin = db.Kasir.FirstOrDefault(k => k.Username == "Admin");
+                if (admin != null)
+                {
+                    admin.PasswordHash = hasher.HashPassword(admin, "admin123");
+                }
+
+                var kasir = db.Kasir.FirstOrDefault(k => k.Username == "Kasir");
+                if (kasir != null)
+                {
+                    kasir.PasswordHash = hasher.HashPassword(kasir, "kasir123");
+                }
+
+                db.SaveChanges();
             }
             catch (Exception ex)
             {
                 var logger = ServiceProvider.GetService<ILoggerService>();
-                logger?.LogError(ex, "Database Initialization");
+                logger?.LogError(ex, "Database Initialization (Migrate)");
+                throw; // Lempar exception agar langsung terdeteksi jika migrasi gagal
             }
         }
 
@@ -76,6 +94,8 @@ namespace KasirKu
 
             services.AddTransient<ITransactionService, TransactionService>();
             services.AddTransient<IProductService, ProductService>();
+            services.AddTransient<IKasirService, KasirService>();
+            
 
             // ViewModels
             services.AddTransient<LogViewModel>();
@@ -84,6 +104,7 @@ namespace KasirKu
             services.AddTransient<ProdukViewModel>();
             services.AddTransient<AuditLogViewModel>();
             services.AddTransient<LaporanViewModel>();
+            services.AddTransient<KelolaAkunViewModel>();
 
             // Views
             services.AddSingleton<MainWindow>();
