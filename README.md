@@ -93,7 +93,7 @@ dotnet run
 - [x] Perancangan database & arsitektur MVVM
 - [x] Modul manajemen produk & stok
 - [x] Modul transaksi kasir
-- [x] Integrasi printer thermal (ESC/POS)
+- [ ] Integrasi printer thermal (ESC/POS)
 - [x] Modul laporan
 - [x] Login & manajemen role kasir
 - [x] Backup/restore database
