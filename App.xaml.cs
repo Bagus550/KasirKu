@@ -54,22 +54,6 @@ namespace KasirKu
                 // Jalankan PRAGMA SQLite
                 db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
                 db.Database.ExecuteSqlRaw("PRAGMA busy_timeout=5000;");
-
-                var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Kasir>();
-
-                var admin = db.Kasir.FirstOrDefault(k => k.Username == "Admin");
-                if (admin != null)
-                {
-                    admin.PasswordHash = hasher.HashPassword(admin, "admin123");
-                }
-
-                var kasir = db.Kasir.FirstOrDefault(k => k.Username == "Kasir");
-                if (kasir != null)
-                {
-                    kasir.PasswordHash = hasher.HashPassword(kasir, "kasir123");
-                }
-
-                db.SaveChanges();
             }
             catch (Exception ex)
             {

@@ -63,7 +63,7 @@ namespace KasirKu.ViewModels
                 ModalAwal = _sessionAktif.ModalAwal;
 
                 TotalOmzetTunai = await db.Transaksi
-                    .Where(t => t.Tanggal >= _sessionAktif.WaktuLogin)
+                    .Where(t => t.KasirSessionId == _sessionAktif.Id)
                     .SumAsync(t => (decimal?)t.TotalHarga) ?? 0;
 
                 TotalEkspektasi = ModalAwal + TotalOmzetTunai;

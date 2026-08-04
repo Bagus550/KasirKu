@@ -83,11 +83,9 @@ namespace KasirKu.ViewModels
 
         private void OnSessionCleared(object? sender, EventArgs e)
         {
-            Keranjang.Clear();
+            ResetKeranjang();
             DaftarHold.Clear();
             ResetInputSuggestion();
-            TotalBayar = 0;
-            HitungTotal();
         }
 
         partial void OnInputBarcodeChanged(string value)
@@ -98,6 +96,28 @@ namespace KasirKu.ViewModels
             _ctsSearch = new CancellationTokenSource();
 
             _ = CariSuggestionProdukAsync(value, _ctsSearch.Token);
+        }
+
+        public ObservableCollection<decimal> DaftarPecahanRupiah { get; } = new()
+        {
+            2000,
+            5000,
+            10000,
+            20000,
+            50000,
+            100000
+        };
+
+        [RelayCommand]
+        private void PilihPecahanUang(decimal nominal)
+        {
+            TotalBayar = nominal;
+        }
+
+        [RelayCommand]
+        private void BayarUangPas()
+        {
+            TotalBayar = TotalHarga;
         }
 
         [RelayCommand]
@@ -231,6 +251,11 @@ namespace KasirKu.ViewModels
             _isUpdatingFromSelection = false;
         }
 
+        private void CartItem_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            HitungTotal();
+        }
+
         private void TambahProdukKeKeranjang(Produk produk)
         {
             if (produk.Stok <= 0)
@@ -252,7 +277,7 @@ namespace KasirKu.ViewModels
             else
             {
                 var newItem = new CartItem(produk, 1);
-                newItem.PropertyChanged += (s, e) => HitungTotal();
+                newItem.PropertyChanged += CartItem_PropertyChanged;
                 Keranjang.Add(newItem);
             }
 
@@ -292,7 +317,8 @@ namespace KasirKu.ViewModels
 
             foreach (var item in holdItem.Items)
             {
-                item.PropertyChanged += (s, e) => HitungTotal();
+                item.PropertyChanged -= CartItem_PropertyChanged;
+                item.PropertyChanged += CartItem_PropertyChanged;
                 Keranjang.Add(item);
             }
 
@@ -310,6 +336,7 @@ namespace KasirKu.ViewModels
         {
             if (item != null)
             {
+                item.PropertyChanged -= CartItem_PropertyChanged;
                 Keranjang.Remove(item);
                 HitungTotal();
             }
@@ -388,6 +415,10 @@ namespace KasirKu.ViewModels
 
         private void ResetKeranjang()
         {
+            foreach (var item in Keranjang)
+            {
+                item.PropertyChanged -= CartItem_PropertyChanged;
+            }
             Keranjang.Clear();
             ResetInputSuggestion();
             TotalBayar = 0;
@@ -398,6 +429,11 @@ namespace KasirKu.ViewModels
         {
             _ctsSearch?.Dispose();
             SessionManager.SessionCleared -= OnSessionCleared;
+
+            foreach (var item in Keranjang)
+            {
+                item.PropertyChanged -= CartItem_PropertyChanged;
+            }
         }
     }
 }

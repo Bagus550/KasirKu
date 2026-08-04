@@ -33,15 +33,9 @@ namespace KasirKu.ViewModels
         private int _selectedTabIndex;
 
         [ObservableProperty]
-        private ObservableCollection<AuditLog> _daftarAuditLog = new();
-
-        [ObservableProperty]
-        private ObservableCollection<KasirSession> _daftarSesiKasir = new();
-
-        [ObservableProperty]
         private bool _isLoading;
-
-        // Daftar Pilihan Filter untuk ComboBox
+        public ObservableCollection<AuditLog> DaftarAuditLog { get; } = new();
+        public ObservableCollection<KasirSession> DaftarSesiKasir { get; } = new();
         public ObservableCollection<string> DaftarFilterAksi { get; } = new()
         {
             "Semua Aksi",
@@ -77,7 +71,7 @@ namespace KasirKu.ViewModels
                 DateTime tglMulai = TanggalAwal.Date;
                 DateTime tglSelesai = TanggalAkhir.Date.AddDays(1);
 
-                // 1. Query dasar untuk Audit Log
+                // 1. Query dasar untuk Audit Log (AsNoTracking ditaruh awal)
                 var logQuery = db.AuditLog
                     .AsNoTracking()
                     .Include(a => a.Kasir)
@@ -93,11 +87,13 @@ namespace KasirKu.ViewModels
                     logQuery = logQuery.Where(a => a.JenisAksi == SelectedJenisAksi);
                 }
 
+                // Tambahkan Take(500) sebagai pembatas keamanan memori UI
                 var logs = await logQuery
                     .OrderByDescending(a => a.Waktu)
+                    .Take(500)
                     .ToListAsync();
 
-                // 2. Ambil Sesi Shift Kasir (Hanya Role 'Kasir')
+                // 2. Query Sesi Kasir
                 var sessions = await db.KasirSession
                     .AsNoTracking()
                     .Include(s => s.Kasir)
@@ -105,10 +101,21 @@ namespace KasirKu.ViewModels
                     .Where(s => s.WaktuLogin >= tglMulai && s.WaktuLogin < tglSelesai)
                     .Where(s => s.Kasir != null && s.Kasir.Role == "Kasir")
                     .OrderByDescending(s => s.WaktuLogin)
+                    .Take(500)
                     .ToListAsync();
 
-                DaftarAuditLog = new ObservableCollection<AuditLog>(logs);
-                DaftarSesiKasir = new ObservableCollection<KasirSession>(sessions);
+                // Update Koleksi tanpa instansiasi ulang
+                DaftarAuditLog.Clear();
+                foreach (var log in logs)
+                {
+                    DaftarAuditLog.Add(log);
+                }
+
+                DaftarSesiKasir.Clear();
+                foreach (var session in sessions)
+                {
+                    DaftarSesiKasir.Add(session);
+                }
             }
             catch (Exception ex)
             {
@@ -180,16 +187,8 @@ namespace KasirKu.ViewModels
         }
 
         [RelayCommand]
-        private void BackupDatabase()
+        private async Task BackupDatabaseAsync()
         {
-            string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
-
-            if (!File.Exists(dbPath))
-            {
-                _dialogService?.ShowWarning("File database SQLite (kasirku.db) tidak ditemukan!", "Peringatan");
-                return;
-            }
-
             var saveFileDialog = new SaveFileDialog
             {
                 Filter = "Database File (*.db)|*.db|SQLite File (*.sqlite)|*.sqlite",
@@ -200,7 +199,16 @@ namespace KasirKu.ViewModels
             {
                 try
                 {
-                    File.Copy(dbPath, saveFileDialog.FileName, overwrite: true);
+                    string destinationPath = saveFileDialog.FileName;
+
+                    if (File.Exists(destinationPath))
+                    {
+                        File.Delete(destinationPath);
+                    }
+
+                    await using var db = await _contextFactory.CreateDbContextAsync();
+                    await db.Database.ExecuteSqlRawAsync("VACUUM INTO {0};", destinationPath);
+
                     _dialogService?.ShowInfo("Backup database berhasil dibuat!", "Sukses");
                 }
                 catch (Exception ex)
@@ -210,7 +218,6 @@ namespace KasirKu.ViewModels
             }
         }
 
-        // Backward compatibility method
         public void MuatDataAudit()
         {
             _ = MuatLogAsync();

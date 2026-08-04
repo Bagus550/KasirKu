@@ -32,16 +32,13 @@ namespace KasirKu.ViewModels
 
         [ObservableProperty]
         private DateTime _tanggalAkhir = DateTime.Today;
+        public ObservableCollection<Transaksi> DaftarTransaksi { get; } = new();
+        public ObservableCollection<ProdukTerlarisModel> ProdukTerlaris { get; } = new();
+        public ObservableCollection<Produk> StokKritis { get; } = new();
 
-        // Daftar Transaksi Hasil Filter
-        [ObservableProperty]
-        private ObservableCollection<Transaksi> _daftarTransaksi = new();
-
-        // Transaksi yang Sedang Dipilih di Tabel (untuk lihat detail item)
         [ObservableProperty]
         private Transaksi? _transaksiTerpilih;
 
-        // Ringkasan Dashboard
         [ObservableProperty]
         private decimal _totalOmzet;
 
@@ -50,12 +47,6 @@ namespace KasirKu.ViewModels
 
         [ObservableProperty]
         private int _totalItemTerjual;
-
-        [ObservableProperty]
-        private ObservableCollection<ProdukTerlarisModel> _produkTerlaris = new();
-
-        [ObservableProperty]
-        private ObservableCollection<Produk> _stokKritis = new();
 
         public LaporanViewModel(IDialogService dialogService, IDbContextFactory<AppDbContext> contextFactory)
         {
@@ -72,26 +63,28 @@ namespace KasirKu.ViewModels
             {
                 using var db = await _contextFactory.CreateDbContextAsync();
 
-                // Atur rentang waktu dari jam 00:00:00 tanggal awal sampai 23:59:59 tanggal akhir
                 DateTime tglMulai = TanggalAwal.Date;
                 DateTime tglSelesai = TanggalAkhir.Date.AddDays(1).AddTicks(-1);
 
-                // Gunakan AsNoTracking() agar membaca data paling fresh langsung dari disk/WAL SQLite
-                var query = await db.Transaksi
-                    .Include(t => t.DetailTransaksi)
-                    .Where(t => t.Tanggal >= tglMulai && t.Tanggal <= tglSelesai)
-                    .OrderByDescending(t => t.Tanggal)
+                var queryBase = db.Transaksi
                     .AsNoTracking()
+                    .Where(t => t.Tanggal >= tglMulai && t.Tanggal <= tglSelesai);
+
+                var listTransaksi = await queryBase
+                    .Include(t => t.DetailTransaksi)
+                    .OrderByDescending(t => t.Tanggal)
                     .ToListAsync();
 
-                DaftarTransaksi = new ObservableCollection<Transaksi>(query);
+                DaftarTransaksi.Clear();
+                foreach (var item in listTransaksi)
+                {
+                    DaftarTransaksi.Add(item);
+                }
 
-                // Hitung Ringkasan Data
-                TotalOmzet = query.Sum(t => t.TotalHarga);
-                TotalJumlahTransaksi = query.Count;
-                TotalItemTerjual = query.SelectMany(t => t.DetailTransaksi).Sum(d => d.Jumlah);
+                TotalOmzet = listTransaksi.Sum(t => t.TotalHarga);
+                TotalJumlahTransaksi = listTransaksi.Count;
+                TotalItemTerjual = listTransaksi.SelectMany(t => t.DetailTransaksi).Sum(d => d.Jumlah);
 
-                // Reset transaksi terpilih
                 TransaksiTerpilih = null;
 
                 await MuatWidgetLaporanAsync(db, tglMulai, tglSelesai);
@@ -104,8 +97,9 @@ namespace KasirKu.ViewModels
 
         private async Task MuatWidgetLaporanAsync(AppDbContext db, DateTime tglMulai, DateTime tglSelesai)
         {
-            // 1. Hitung Top 5 Produk Terlaris berdasarkan range tanggal laporan
-            var queryTerlaris = await db.DetailTransaksi
+            // 1. Top 5 Produk Terlaris
+            var listTerlaris = await db.DetailTransaksi
+                .AsNoTracking()
                 .Where(d => d.Transaksi.Tanggal >= tglMulai && d.Transaksi.Tanggal <= tglSelesai)
                 .GroupBy(d => d.NamaProduk)
                 .Select(g => new ProdukTerlarisModel
@@ -115,19 +109,26 @@ namespace KasirKu.ViewModels
                 })
                 .OrderByDescending(x => x.TotalTerjual)
                 .Take(5)
-                .AsNoTracking()
                 .ToListAsync();
 
-            ProdukTerlaris = new ObservableCollection<ProdukTerlarisModel>(queryTerlaris);
+            ProdukTerlaris.Clear();
+            foreach (var item in listTerlaris)
+            {
+                ProdukTerlaris.Add(item);
+            }
 
-            // 2. Ambil Produk dengan Stok Kritis (Stok <= StokMinimum)
-            var queryStokKritis = await db.Produk
+            // 2. Produk Stok Kritis
+            var listStokKritis = await db.Produk
+                .AsNoTracking()
                 .Where(p => p.Stok <= p.StokMinimum)
                 .OrderBy(p => p.Stok)
-                .AsNoTracking()
                 .ToListAsync();
 
-            StokKritis = new ObservableCollection<Produk>(queryStokKritis);
+            StokKritis.Clear();
+            foreach (var item in listStokKritis)
+            {
+                StokKritis.Add(item);
+            }
         }
 
         // Quick Filter: Hari Ini
@@ -152,7 +153,7 @@ namespace KasirKu.ViewModels
         [RelayCommand]
         public void ExportCsv()
         {
-            if (DaftarTransaksi == null || DaftarTransaksi.Count == 0)
+            if (DaftarTransaksi.Count == 0)
             {
                 _dialogService.ShowWarning("Tidak ada data transaksi untuk diekspor!", "Peringatan");
                 return;
@@ -188,18 +189,10 @@ namespace KasirKu.ViewModels
         }
 
         [RelayCommand]
-        public void BackupDatabase()
+        public async Task BackupDatabaseAsync()
         {
             try
             {
-                string sourceDb = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kasirku.db");
-
-                if (!File.Exists(sourceDb))
-                {
-                    _dialogService.ShowError("File database tidak ditemukan!", "Error");
-                    return;
-                }
-
                 var saveFileDialog = new SaveFileDialog
                 {
                     Filter = "SQLite Database (*.sqlite;*.db)|*.sqlite;*.db",
@@ -208,7 +201,15 @@ namespace KasirKu.ViewModels
 
                 if (saveFileDialog.ShowDialog() == true)
                 {
-                    File.Copy(sourceDb, saveFileDialog.FileName, overwrite: true);
+                    string destinationPath = saveFileDialog.FileName;
+
+                    if (File.Exists(destinationPath))
+                    {
+                        File.Delete(destinationPath);
+                    }
+
+                    using var db = await _contextFactory.CreateDbContextAsync();
+                    await db.Database.ExecuteSqlRawAsync("VACUUM INTO {0};", destinationPath);
 
                     _dialogService.ShowInfo("Backup database berhasil disimpan!", "Sukses Backup");
                 }
